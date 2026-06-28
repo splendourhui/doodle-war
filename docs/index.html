@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>涂鸦战争：纸上觉醒【数值重制版】</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 基础战斗动画 */
+        @keyframes shake {
+            0%,100%{transform:translateX(0)}
+            25%{transform:translateX(-8px)}
+            75%{transform:translateX(8px)}
+        }
+        @keyframes flash-red {
+            0%,100%{filter:none}
+            50%{filter:brightness(0.5) sepia(1) saturate(5) hue-rotate(-20deg)}
+        }
+        @keyframes crit-glow {
+            0%{box-shadow:0 0 0 #f97316}
+            50%{box-shadow:0 0 24px #f97316, 0 0 40px #fb923c}
+            100%{box-shadow:0 0 0 #f97316}
+        }
+        @keyframes dodge-fade {
+            0%{opacity:1; transform:translateX(0)}
+            100%{opacity:0; transform:translateX(30px)}
+        }
+        @keyframes float-damage {
+            0%{opacity:1; transform:translateY(0) scale(1)}
+            100%{opacity:0; transform:translateY(-45px) scale(1.3)}
+        }
+        @keyframes win-gold {
+            0%,100%{box-shadow:0 0 0 #facc15}
+            50%{box-shadow:0 0 30px #facc15, 0 0 60px #fef08a}
+        }
+        /* 爪痕划过动画（强化版：真实爪子划过效果） */
+        @keyframes claw-sweep {
+            0%   { opacity:0; transform: translate(-15%,-15%) rotate(-25deg) scale(0.5); }
+            25%  { opacity:1; transform: translate(-5%,-5%)  rotate(-12deg) scale(0.9); }
+            60%  { opacity:1; transform: translate(8%,8%)    rotate(2deg)   scale(1.05); }
+            100% { opacity:0; transform: translate(18%,18%)  rotate(10deg)  scale(1.2); }
+        }
+        @keyframes claw-draw {
+            0%   { stroke-dashoffset: 260; }
+            55%  { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: 0; }
+        }
+        .hit-shake { animation: shake 0.3s ease-in-out; }
+        .hit-flash { animation: flash-red 0.4s ease-in-out; }
+        .crit-glow { animation: crit-glow 0.5s ease-out; }
+        .dodge-fade-anim { animation: dodge-fade 0.6s ease-out forwards; }
+        .win-gold-anim { animation: win-gold 0.8s ease-in-out infinite; }
+        .claw-slash-anim-v2 {
+            position:absolute;
+            pointer-events:none; z-index:18;
+            animation: claw-sweep 0.55s ease-out forwards;
+            filter: drop-shadow(0 0 6px rgba(239,68,68,0.9));
+        }
+        .claw-mark-glow, .claw-mark-main, .claw-mark-core {
+            stroke-dasharray: 80; stroke-dashoffset: 80;
+            animation: claw-draw 0.42s ease-out forwards;
+        }
+
+        /* 伤害飘字容器 */
+        .battle-card-wrap { position: relative; overflow:hidden; }
+        .float-dmg-text {
+            position: absolute;
+            left: 50%;
+            top: 20%;
+            font-weight: bold;
+            font-size: 22px;
+            pointer-events: none;
+            animation: float-damage 0.8s ease-out forwards;
+            z-index: 10;
+        }
+        .dodge-text { color: #14b8a6; font-size: 18px; }
+        .normal-dmg { color: #ef4444; }
+        .crit-dmg { color: #f97316; font-size: 28px; }
+
+        canvas { touch-action: none; }
+        .card-shadow { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+        .tab-btn { transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg,#6366f1,#8b5cf6); }
+        .btn-danger { background: linear-gradient(135deg,#ef4444,#f87171); }
+        .btn-success { background: linear-gradient(135deg,#10b981,#34d399); }
+
+        /* 稀有度评级样式 */
+        .rank-N { background:#9ca3af; color:white; }
+        .rank-R { background:#3b82f6; color:white; }
+        .rank-SR { background:#8b5cf6; color:white; }
+        .rank-SSR { background:#f97316; color:white; }
+        .rank-UR { background:linear-gradient(135deg,#dc2626,#fbbf24); color:white; }
+        .card-UR { border:3px solid #fbbf24; box-shadow:0 0 12px rgba(251,191,36,0.4); }
+        .card-SSR { border:3px solid #f97316; }
+        .card-SR { border:2px solid #8b5cf6; }
+        .card-R { border:2px solid #3b82f6; }
+        .card-N { border:1px solid #9ca3af; }
+
+        /* ====== 列车召唤超级大招动画 ====== */
+        .train-overlay {
+            position:absolute; top:0; left:0; right:0; bottom:0;
+            pointer-events:none; z-index:60; overflow:visible;
+        }
+        .train-vehicle {
+            position:absolute;
+            transform: translateY(-50%);
+            white-space:nowrap;
+            filter: drop-shadow(0 6px 10px rgba(0,0,0,0.5));
+            z-index:61;
+        }
+        .train-body { font-size:60px; letter-spacing:-6px; }
+        .train-smoke {
+            position:absolute; top:-22px; left:8px;
+            font-size:26px; opacity:0.75;
+            animation: smoke-puff 0.35s ease-out infinite;
+        }
+        @keyframes smoke-puff {
+            0%   { transform: translate(0,0) scale(1); opacity:0.75; }
+            100% { transform: translate(-14px,-22px) scale(1.6); opacity:0; }
+        }
+        @keyframes train-pass-left  { 0%{left:-45%;} 100%{left:145%;} }
+        @keyframes train-pass-right { 0%{left:145%;} 100%{left:-45%;} }
+        .train-move-left  { animation: train-pass-left  1.6s linear forwards; }
+        .train-move-right { animation: train-pass-right 1.6s linear forwards; }
+
+        /* 撞击屏幕震动 */
+        @keyframes screen-shake-anim {
+            0%,100% { transform: translate(0,0); }
+            10% { transform: translate(-5px,3px); }
+            20% { transform: translate(6px,-4px); }
+            30% { transform: translate(-4px,5px); }
+            40% { transform: translate(5px,-3px); }
+            50% { transform: translate(-6px,4px); }
+            60% { transform: translate(4px,-5px); }
+            70% { transform: translate(-5px,3px); }
+            80% { transform: translate(3px,-4px); }
+            90% { transform: translate(-4px,2px); }
+        }
+        .screen-shake { animation: screen-shake-anim 0.5s ease-in-out; }
+
+        /* 被撞飞动画 */
+        @keyframes knock-fly-right {
+            0%   { transform: translate(0,0) rotate(0deg); opacity:1; }
+            20%  { transform: translate(25px,-50px) rotate(20deg); opacity:1; }
+            50%  { transform: translate(-40px,-220px) rotate(-60deg); opacity:0.85; }
+            100% { transform: translate(-140px,-460px) rotate(-760deg); opacity:0; }
+        }
+        @keyframes knock-fly-left {
+            0%   { transform: translate(0,0) rotate(0deg); opacity:1; }
+            20%  { transform: translate(-25px,-50px) rotate(-20deg); opacity:1; }
+            50%  { transform: translate(40px,-220px) rotate(60deg); opacity:0.85; }
+            100% { transform: translate(140px,-460px) rotate(760deg); opacity:0; }
+        }
+        .knock-fly-left  { animation: knock-fly-left  0.7s cubic-bezier(0.36,0,0.66,-0.56) forwards; }
+        .knock-fly-right { animation: knock-fly-right 0.7s cubic-bezier(0.36,0,0.66,-0.56) forwards; }
+
+        /* 从天上掉下来回到卡片 */
+        @keyframes fall-from-sky {
+            0%   { transform: translateY(-520px) rotate(540deg); opacity:0; }
+            45%  { transform: translateY(-260px) rotate(220deg); opacity:0.4; }
+            75%  { transform: translateY(15px) rotate(20deg); opacity:1; }
+            88%  { transform: translateY(-12px) rotate(-8deg); opacity:1; }
+            100% { transform: translateY(0) rotate(0deg); opacity:1; }
+        }
+        .fall-from-sky-anim { animation: fall-from-sky 1s ease-in forwards; }
+
+        /* 列车伤害飘字 */
+        .train-dmg-text {
+            color:#dc2626; font-size:30px; font-weight:900;
+            text-shadow: 0 0 12px #fbbf24, 2px 2px 0 #fff, -1px -1px 0 #fff;
+            animation: float-damage 1.3s ease-out forwards;
+            z-index:25;
+        }
+
+        /* ====== 空调冰冻超级大招动画 ====== */
+        /* 结冰闪光（被冻瞬间） */
+        @keyframes freeze-flash-anim {
+            0%, 100% { filter: none; }
+            50% { filter: brightness(1.4) sepia(1) saturate(4) hue-rotate(165deg); }
+        }
+        .freeze-flash { animation: freeze-flash-anim 0.5s ease-in-out; }
+
+        /* 冰块覆盖怪物 */
+        .ice-block-overlay {
+            position:absolute;
+            pointer-events:none; z-index:22;
+            border-radius:8px;
+            overflow:hidden;
+            animation: ice-freeze-in 0.5s ease-out forwards;
+        }
+        .ice-cube {
+            position:absolute; inset:0;
+            background: linear-gradient(135deg,
+                rgba(186,230,253,0.55) 0%,
+                rgba(125,211,252,0.35) 50%,
+                rgba(186,230,253,0.55) 100%);
+            border:3px solid rgba(186,230,253,0.85);
+            border-radius:8px;
+            box-shadow:
+                inset 0 0 25px rgba(255,255,255,0.6),
+                inset 0 0 10px rgba(125,211,252,0.8),
+                0 0 18px rgba(125,211,252,0.7);
+            animation: ice-shimmer 1.5s ease-in-out infinite;
+        }
+        .ice-crystals {
+            position:absolute; top:6px; left:0; right:0;
+            text-align:center; font-size:18px; opacity:0.95;
+            animation: ice-float 2s ease-in-out infinite;
+        }
+        .ice-cracks {
+            position:absolute; inset:0;
+            background:
+                linear-gradient(45deg, transparent 48%, rgba(255,255,255,0.5) 49%, rgba(255,255,255,0.5) 51%, transparent 52%),
+                linear-gradient(-30deg, transparent 48%, rgba(255,255,255,0.4) 49%, rgba(255,255,255,0.4) 51%, transparent 52%);
+            opacity:0.5;
+            border-radius:8px;
+        }
+        @keyframes ice-freeze-in {
+            0%   { opacity:0; transform: scale(1.4) rotate(-3deg); }
+            60%  { opacity:1; transform: scale(0.95) rotate(1deg); }
+            100% { opacity:1; transform: scale(1) rotate(0deg); }
+        }
+        @keyframes ice-shimmer {
+            0%,100% { box-shadow: inset 0 0 25px rgba(255,255,255,0.6), inset 0 0 10px rgba(125,211,252,0.8), 0 0 18px rgba(125,211,252,0.7); }
+            50%     { box-shadow: inset 0 0 35px rgba(255,255,255,0.85), inset 0 0 15px rgba(125,211,252,1), 0 0 28px rgba(125,211,252,1); }
+        }
+        @keyframes ice-float {
+            0%,100% { transform: translateY(0); }
+            50%     { transform: translateY(-3px); }
+        }
+        /* 冰碎解冻 */
+        @keyframes ice-shatter-anim {
+            0%   { opacity:1; transform: scale(1); filter: brightness(1); }
+            30%  { opacity:0.9; transform: scale(1.08); filter: brightness(1.6); }
+            100% { opacity:0; transform: scale(1.4); filter: brightness(2.2); }
+        }
+        .ice-shatter { animation: ice-shatter-anim 0.6s ease-out forwards; }
+
+        /* 寒气飘字 */
+        .freeze-dmg-text {
+            color:#0ea5e9; font-size:26px; font-weight:900;
+            text-shadow: 0 0 12px #bae6fd, 2px 2px 0 #fff, -1px -1px 0 #fff;
+            animation: float-damage 1.2s ease-out forwards;
+            z-index:25;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+<div class="max-w-6xl mx-auto p-4 md:p-6">
+    <!-- 顶部导航 -->
+    <header class="mb-6">
+        <h1 class="text-[clamp(1.8rem,4vw,2.8rem)] font-bold text-center text-indigo-700">涂鸦战争：纸上觉醒【数值重制版】</h1>
+        <div class="flex gap-3 justify-center mt-4 flex-wrap">
+            <button onclick="switchTab('draw')" class="tab-btn btn-primary text-white px-5 py-2 rounded-lg font-medium">🎨 绘制涂鸦</button>
+            <button onclick="switchTab('library')" class="tab-btn bg-slate-200 px-5 py-2 rounded-lg font-medium">📚 怪物图鉴</button>
+            <button onclick="switchTab('battle')" class="tab-btn bg-slate-200 px-5 py-2 rounded-lg font-medium">⚔️ 对战竞技场</button>
+        </div>
+    </header>
+
+    <!-- 1. 绘制页面 -->
+    <section id="tab-draw" class="tab-content block">
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- 涂鸦画布 -->
+            <div class="bg-white rounded-xl p-4 card-shadow">
+                <h2 class="text-xl font-semibold mb-3">1. 随手画你的怪物</h2>
+                <canvas id="drawCanvas" width="480" height="420" class="border-2 border-slate-300 w-full rounded-lg bg-white cursor-crosshair"></canvas>
+                <div class="flex gap-2 mt-3 flex-wrap">
+                    <button onclick="clearCanvas()" class="px-4 py-2 bg-slate-200 rounded-lg">清空画布</button>
+                    <button onclick="recognizeDoodle()" class="btn-success text-white px-4 py-2 rounded-lg font-medium">✨ AI觉醒生成怪物</button>
+                </div>
+            </div>
+            <!-- 生成角色卡片预览 -->
+            <div class="bg-white rounded-xl p-4 card-shadow">
+                <h2 class="text-xl font-semibold mb-3">2. AI觉醒结果预览</h2>
+                <div id="emptyTip" class="py-20 text-center text-slate-400">绘制涂鸦后点击AI觉醒生成角色卡</div>
+                <div id="cardPreview" class="hidden">
+                    <div id="previewCardWrap" class="bg-amber-50 border-2 border-amber-300 rounded-xl overflow-hidden">
+                        <div class="bg-amber-400 py-3 flex justify-between items-center px-4">
+                            <h3 id="cardName" class="text-2xl font-bold text-amber-900">怪物名称</h3>
+                            <span id="rankTag" class="px-3 py-1 rounded font-bold text-sm">N</span>
+                        </div>
+                        <div class="p-4">
+                            <canvas id="cardImg" width="160" height="160" class="mx-auto border border-slate-300 bg-white rounded"></canvas>
+                            <p id="cardDesc" class="text-sm text-slate-600 text-center mt-2 italic">背景描述</p>
+                            <div class="mt-4 grid grid-cols-2 gap-3">
+                                <div class="bg-rose-50 p-3 rounded-lg border border-rose-200">
+                                    <p class="font-semibold text-rose-700">武器</p>
+                                    <p id="weaponName">-</p>
+                                    <p id="weaponBuff" class="text-xs text-rose-500"></p>
+                                </div>
+                                <div class="bg-sky-50 p-3 rounded-lg border border-sky-200">
+                                    <p class="font-semibold text-sky-700">盔甲</p>
+                                    <p id="armorName">-</p>
+                                    <p id="armorBuff" class="text-xs text-sky-500"></p>
+                                </div>
+                            </div>
+                            <div class="mt-4 space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span>攻击力</span>
+                                    <span id="atkStar" class="text-red-500"></span>
+                                    <span id="atkVal">0</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span>防御力</span>
+                                    <span id="defStar" class="text-blue-500"></span>
+                                    <span id="defVal">0</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span>速度</span>
+                                    <span id="spdStar" class="text-green-500"></span>
+                                    <span id="spdVal">0</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span>暴击率</span>
+                                    <span id="critStar" class="text-orange-500"></span>
+                                    <span id="critVal">0%</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span>闪避率</span>
+                                    <span id="dodgeStar" class="text-teal-500"></span>
+                                    <span id="dodgeVal">0%</span>
+                                </div>
+                                <div class="flex justify-between items-center font-semibold pt-2 border-t">
+                                    <span>综合血量</span>
+                                    <span id="hpVal" class="text-rose-600">0</span>
+                                </div>
+                            </div>
+                            <button onclick="saveMonster()" class="w-full mt-4 btn-primary text-white py-3 rounded-lg font-bold">保存怪物到图鉴</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. 怪物图鉴 -->
+    <section id="tab-library" class="tab-content hidden">
+        <div class="bg-white rounded-xl p-4 card-shadow">
+            <h2 class="text-xl font-semibold mb-4">📚 已保存怪物图鉴</h2>
+            <div id="libraryList" class="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="text-slate-400 col-span-full py-10 text-center">暂无怪物，快去绘制涂鸦生成吧！</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. 对战竞技场 -->
+    <section id="tab-battle" class="tab-content hidden">
+        <div class="bg-white rounded-xl p-4 card-shadow">
+            <h2 class="text-xl font-semibold mb-4">⚔️ 怪物自动对战</h2>
+            <div id="battleGrid" class="grid md:grid-cols-2 gap-6 mb-6 relative">
+                <!-- 左侧我方 -->
+                <div class="border-2 border-indigo-300 rounded-lg p-4">
+                    <h3 class="font-semibold text-indigo-700 mb-3">我方出战</h3>
+                    <div id="playerSelectBox" class="space-y-2 max-h-64 overflow-y-auto">
+                        <p class="text-slate-400 text-sm">先去图鉴保存怪物</p>
+                    </div>
+                    <div id="playerMonsterCard" class="mt-4 hidden border border-indigo-200 rounded p-4 battle-card-wrap">
+                        <canvas id="playerBattleImg" width="160" height="160" class="mx-auto"></canvas>
+                        <div id="playerEffectLayer" class="absolute inset-0 pointer-events-none"></div>
+                        <div id="playerClawLayer" class="absolute inset-0 pointer-events-none"></div>
+                        <p id="playerBattleName" class="text-center font-bold mt-1"></p>
+                        <div class="mt-2">
+                            <div class="flex justify-between text-sm">
+                                <span>血量</span>
+                                <span><span id="playerHp">1000</span>/<span id="playerMaxHp">1000</span></span>
+                            </div>
+                            <div class="w-full bg-slate-200 h-3 rounded-full mt-1 overflow-hidden">
+                                <div id="playerHpBar" class="h-full bg-green-500 transition-all"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 右侧敌方 -->
+                <div class="border-2 border-rose-300 rounded-lg p-4">
+                    <h3 class="font-semibold text-rose-700 mb-3">敌方出战</h3>
+                    <div id="enemySelectBox" class="space-y-2 max-h-64 overflow-y-auto">
+                        <p class="text-slate-400 text-sm">先去图鉴保存怪物</p>
+                    </div>
+                    <div id="enemyMonsterCard" class="mt-4 hidden border border-rose-200 rounded p-4 battle-card-wrap">
+                        <canvas id="enemyBattleImg" width="160" height="160" class="mx-auto"></canvas>
+                        <div id="enemyEffectLayer" class="absolute inset-0 pointer-events-none"></div>
+                        <div id="enemyClawLayer" class="absolute inset-0 pointer-events-none"></div>
+                        <p id="enemyBattleName" class="text-center font-bold mt-1"></p>
+                        <div class="mt-2">
+                            <div class="flex justify-between text-sm">
+                                <span>血量</span>
+                                <span><span id="enemyHp">1000</span>/<span id="enemyMaxHp">1000</span></span>
+                            </div>
+                            <div class="w-full bg-slate-200 h-3 rounded-full mt-1 overflow-hidden">
+                                <div id="enemyHpBar" class="h-full bg-red-500 transition-all"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mb-4">
+                <button onclick="startBattle()" class="btn-danger text-white px-8 py-3 rounded-lg font-bold text-lg">开始对战</button>
+            </div>
+            <div class="border border-slate-300 rounded-lg p-3 h-64 overflow-y-auto">
+                <h4 class="font-semibold mb-2">对战记录</h4>
+                <div id="battleLog" class="text-sm space-y-1 text-slate-700">
+                    <p class="text-slate-400">选择双方怪物后开启战斗</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+// ===================== 全局配置数据（数值重构版） =====================
+// 40种涂鸦怪物类型
+const MONSTER_TYPES = [
+    {name:"弯刀怪",tag:"单线条武器",desc:"孤独铁匠灵魂与弯刀融合，重锤输出高伤"},
+    {name:"飞鸟精灵",tag:"曲线翅膀",desc:"林间轻盈精灵，高速高闪避擅长拉扯"},
+    {name:"岩石巨人",tag:"块状粗线条",desc:"地底石灵，超高防御慢速近战"},
+    {name:"火焰蜥蜴",tag:"尖刺多折线",desc:"火山原生生物，暴击伤害极高"},
+    {name:"水母灵",tag:"圆润多曲线",desc:"深海浮游生物，持续魔法伤害"},
+    {name:"铁甲骑士",tag:"对称几何",desc:"远古守卫，均衡攻防标准战士"},
+    {name:"暗影蝙蝠",tag:"小翅膀锐角",desc:"黑夜猎手，高速高暴击低防御"},
+    {name:"树人守卫",tag:"分叉枝条线条",desc:"森林守护者，高额生命与防御"},
+    {name:"冰晶狼",tag:"尖锐三角轮廓",desc:"雪域掠食者，速度与暴击双优"},
+    {name:"泥浆史莱姆",tag:"无规则圆润",desc:"泥潭生物，超高闪避伤害平庸"},
+    {name:"雷霆巨鹰",tag:"大翅膀流畅曲线",desc:"雷云巨兽，均衡全能型怪物"},
+    {name:"骸骨刺客",tag:"细长骨骼线条",desc:"古墓暗杀者，极致高速暴击"},
+    {name:"熔岩魔像",tag:"粗硬折线块状",desc:"火山造物，高攻高血速度缓慢"},
+    {name:"月光狐",tag:"纤细柔和曲线",desc:"林间灵狐，闪避暴击拉满"},
+    {name:"甲壳龟王",tag:"圆形闭合轮廓",desc:"水域霸主，全游戏最高防御"},
+    {name:"风元素",tag:"螺旋回旋线条",desc:"气流化身，极速攻击频繁闪避"},
+    {name:"毒牙蟒蛇",tag:"长曲线单条",desc:"沼泽毒物，稳定持续输出"},
+    {name:"圣光天使",tag:"对称翅膀圆弧",desc:"神圣造物，攻防均衡自带生存加成"},
+    {name:"深渊触手怪",tag:"多分叉曲线",desc:"海底深渊魔物，多段伤害攻击"},
+    {name:"沙蝎战士",tag:"锐角分叉尾部",desc:"沙漠猎手，暴击与防御兼顾"},
+    {name:"幽灵幽魂",tag:"断续虚线涂鸦",desc:"亡者灵体，超高闪避低血量"},
+    {name:"山岭巨龙",tag:"大轮廓多尖角",desc:"传说巨兽，全属性全面强化"},
+    {name:"蜂群女皇",tag:"细碎密集线条",desc:"虫群首领，高频小额攻击"},
+    {name:"霜巨人",tag:"厚重粗线条封闭",desc:"北境巨人，高血高防低速"},
+    {name:"幻彩蝶妖",tag:"柔和对称曲线",desc:"花海精灵，极致闪避高速"},
+    {name:"赤焰螳螂",tag:"锯齿锐角肢体",desc:"丛林猎杀者，高速暴击压制敌人"},
+    {name:"潮汐海马兽",tag:"流畅波浪曲线",desc:"浅海灵兽，均衡闪避与攻击"},
+    {name:"暗纹蜘蛛母",tag:"放射细碎线条",desc:"洞穴母蛛，高频持续毒伤"},
+    {name:"翡翠蛟龙",tag:"长条连续曲线",desc:"河川神兽，高攻高闪全能"},
+    {name:"黄铜傀儡",tag:"方正直角块状",desc:"工坊机械造物，超高防御稳定输出"},
+    {name:"迷雾夜枭",tag:"椭圆柔和轮廓",desc:"暗夜侦查兽，高闪避高暴击"},
+    {name:"荆棘魔蛛",tag:"短刺放射线条",desc:"荒原魔物，攻防小幅兼顾"},
+    {name:"极光白鹿",tag:"细长柔和分叉",desc:"雪原灵兽，极致速度闪避拉满"},
+    {name:"灰烬恶魔",tag:"杂乱粗折线",desc:"地狱魔物，高额攻击牺牲防御"},
+    {name:"琉璃海胆王",tag:"圆形密集尖刺",desc:"深海防御霸主，反伤特质"},
+    {name:"碎岩穿山甲",tag:"层叠块状线条",desc:"山地生物，最高物理防御"},
+    {name:"星尘萤火精",tag:"零散细碎小点线条",desc:"星空精灵，极速高频小额暴击"},
+    {name:"腐骨地龙",tag:"粗长骨骼折线",desc:"地底凶兽，高攻高血量低速"},
+    {name:"碧潭灵蛙",tag:"圆润宽大轮廓",desc:"沼泽灵兽，高闪避均衡生存"},
+    {name:"黑锋狮鹫",tag:"尖角大翅膀",desc:"天空掠食者，攻击暴击双天花板"}
+];
+
+// 50件装备（适配0-100属性体系）
+const EQUIP_LIST = [
+    // 武器28件
+    {name:"巨锤",type:"weapon",buff:{atk:18,crit:6},desc:"极高伤害击退"},
+    {name:"淬毒匕首",type:"weapon",buff:{atk:10,spd:15,crit:10},desc:"高速高暴击"},
+    {name:"雷霆长剑",type:"weapon",buff:{atk:14,spd:12},desc:"均衡近战武器"},
+    {name:"熔岩战斧",type:"weapon",buff:{atk:28,spd:-10},desc:"超高攻击降低速度"},
+    {name:"暗影短刃",type:"weapon",buff:{spd:20,crit:15},desc:"极致暴击高速"},
+    {name:"圣光法杖",type:"weapon",buff:{atk:12,dodge:7},desc:"带闪避加成"},
+    {name:"骨刺长矛",type:"weapon",buff:{atk:16,crit:4},desc:"稳定输出武器"},
+    {name:"螺旋飞镖",type:"weapon",buff:{spd:22,dodge:5},desc:"极速远程"},
+    {name:"山岭巨斧",type:"weapon",buff:{atk:30,def:12,spd:-14},desc:"肉盾重型武器"},
+    {name:"冰晶刺刃",type:"weapon",buff:{atk:13,spd:14,crit:7},desc:"均衡输出"},
+    {name:"蜂刺短矛",type:"weapon",buff:{spd:21,crit:9},desc:"高频攻击"},
+    {name:"幽魂镰刀",type:"weapon",buff:{atk:11,dodge:10},desc:"灵体专用武器"},
+    {name:"沙蝎尾刺",type:"weapon",buff:{atk:14,def:11},desc:"攻防兼顾"},
+    {name:"树人木杖",type:"weapon",buff:{def:14,dodge:6},desc:"防御型武器"},
+    {name:"幻彩花瓣刃",type:"weapon",buff:{spd:25,dodge:14},desc:"极限闪避高速"},
+    {name:"陨星重剑",type:"weapon",buff:{atk:35,def:10,spd:-16},desc:"顶级重型巨剑"},
+    {name:"疾风袖箭",type:"weapon",buff:{spd:28,crit:10,dodge:4},desc:"超高速远程偷袭"},
+    {name:"腐毒骨爪",type:"weapon",buff:{atk:15,crit:11,dodge:-3},desc:"毒系高暴击爪刃"},
+    {name:"极光角刃",type:"weapon",buff:{spd:24,dodge:12,crit:5},desc:"灵兽专属轻武器"},
+    {name:"碎岩开山刀",type:"weapon",buff:{atk:26,def:14,spd:-13},desc:"山地战士武器"},
+    {name:"迷雾雾刃",type:"weapon",buff:{dodge:20,atk:9,crit:-5},desc:"极致闪避隐身刃"},
+    {name:"星尘萤火杖",type:"weapon",buff:{spd:26,crit:12,dodge:6},desc:"精灵高频暴击法杖"},
+    {name:"灰烬魔刃",type:"weapon",buff:{atk:32,crit:14,def:-12},desc:"恶魔狂暴之刃"},
+    {name:"潮汐三叉戟",type:"weapon",buff:{atk:17,dodge:9,spd:10},desc:"海洋均衡武器"},
+    {name:"黄铜机械拳套",type:"weapon",buff:{atk:19,def:16,spd:-9},desc:"傀儡专用拳套"},
+    {name:"荆棘骨刺鞭",type:"weapon",buff:{atk:12,spd:18,def:9},desc:"持续缠绕伤害"},
+    {name:"琉璃穿刺针",type:"weapon",buff:{spd:30,crit:18,atk:-8},desc:"极致暴击高速针刃"},
+    {name:"黑锋狮鹫爪",type:"weapon",buff:{atk:27,crit:16,spd:8},desc:"天空掠食利爪"},
+    // 盔甲22件
+    {name:"皮革盔甲",type:"armor",buff:{def:13,dodge:4},desc:"均衡轻甲"},
+    {name:"玄铁重甲",type:"armor",buff:{def:30,spd:-11},desc:"最高防御重甲"},
+    {name:"风纹斗篷",type:"armor",buff:{spd:18,dodge:9},desc:"高速闪避衣"},
+    {name:"荆棘皮甲",type:"armor",buff:{def:16,atk:9},desc:"反伤轻型甲"},
+    {name:"冰晶护盾",type:"armor",buff:{def:26,crit:-4},desc:"极致防御"},
+    {name:"暗影披风",type:"armor",buff:{dodge:14,spd:11},desc:"超高闪避"},
+    {name:"岩石战甲",type:"armor",buff:{def:28,dodge:-5},desc:"厚重堡垒甲"},
+    {name:"圣光法袍",type:"armor",buff:{def:12,dodge:6,crit:5},desc:"全能法袍"},
+    {name:"毒鳞软甲",type:"armor",buff:{dodge:8,atk:10},desc:"刺客专用甲"},
+    {name:"龙鳞铠甲",type:"armor",buff:{def:22,atk:12,spd:8},desc:"传说均衡甲"},
+    {name:"霜石护板",type:"armor",buff:{def:25,crit:4},desc:"防御暴击兼顾"},
+    {name:"泥浆软甲",type:"armor",buff:{dodge:20,def:-10},desc:"极致闪避牺牲防御"},
+    {name:"骸骨肩甲",type:"armor",buff:{spd:16,crit:10},desc:"刺客护甲"},
+    {name:"飞翼战衣",type:"armor",buff:{spd:20,dodge:7},desc:"高速飞行甲"},
+    {name:"深渊触手甲",type:"armor",buff:{atk:11,dodge:10},desc:"输出闪避兼顾"},
+    {name:"极光白鹿绒袍",type:"armor",buff:{spd:24,dodge:13,def:-9},desc:"灵兽极致速度甲"},
+    {name:"黄铜机械外甲",type:"armor",buff:{def:32,atk:9,spd:-14},desc:"傀儡顶级重甲"},
+    {name:"星尘薄纱",type:"armor",buff:{dodge:24,spd:20,def:-15},desc:"精灵极限闪避纱衣"},
+    {name:"灰烬恶魔甲",type:"armor",buff:{atk:15,def:24,dodge:-7},desc:"恶魔高攻高防重甲"},
+    {name:"潮汐海藻甲",type:"armor",buff:{dodge:11,def:21,spd:10},desc:"海洋均衡软甲"},
+    {name:"碎岩穿山甲鳞甲",type:"armor",buff:{def:35,crit:-6,spd:-12},desc:"全游戏最高物理防御"},
+    {name:"迷雾夜行衣",type:"armor",buff:{dodge:22,spd:15,atk:-9},desc:"隐身潜行专用衣"}
+];
+
+// 本地存储怪物库
+let monsterLibrary = JSON.parse(localStorage.getItem("doodleMonsterLib")) || [];
+let currentDoodleData = null;
+let currentGenMonster = null;
+let selectedPlayerMonster = null;
+let selectedEnemyMonster = null;
+
+// ===================== 画布涂鸦逻辑 =====================
+const drawCanvas = document.getElementById("drawCanvas");
+const drawCtx = drawCanvas.getContext("2d");
+let isDrawing = false;
+let drawPoints = [];
+
+drawCanvas.addEventListener("mousedown", startDraw);
+drawCanvas.addEventListener("touchstart", (e)=>{e.preventDefault();startDraw(e.touches[0])});
+drawCanvas.addEventListener("mousemove", draw);
+drawCanvas.addEventListener("touchmove", (e)=>{e.preventDefault();draw(e.touches[0])});
+drawCanvas.addEventListener("mouseup", stopDraw);
+drawCanvas.addEventListener("mouseleave", stopDraw);
+drawCanvas.addEventListener("touchend", stopDraw);
+
+function getPos(e){
+    const rect = drawCanvas.getBoundingClientRect();
+    const scaleX = drawCanvas.width / rect.width;
+    const scaleY = drawCanvas.height / rect.height;
+    return {x:(e.clientX - rect.left)*scaleX, y:(e.clientY - rect.top)*scaleY};
+}
+function startDraw(e){
+    isDrawing = true;
+    const p = getPos(e);
+    drawPoints.push([p.x,p.y]);
+    drawCtx.beginPath();
+    drawCtx.moveTo(p.x,p.y);
+    drawCtx.lineWidth = 4;
+    drawCtx.lineCap = "round";
+    drawCtx.strokeStyle = "#222";
+}
+function draw(e){
+    if(!isDrawing) return;
+    const p = getPos(e);
+    drawPoints.push([p.x,p.y]);
+    drawCtx.lineTo(p.x,p.y);
+    drawCtx.stroke();
+}
+function stopDraw(){ isDrawing = false; }
+function clearCanvas(){
+    drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+    drawPoints = [];
+    document.getElementById("emptyTip").classList.remove("hidden");
+    document.getElementById("cardPreview").classList.add("hidden");
+    currentGenMonster = null;
+}
+
+// ===================== AI涂鸦识别生成怪物（0-100属性+正态分布+正常稀有度） =====================
+// 正态分布随机：两次随机取平均，中间值多，极端值少
+function normalRandom(max) {
+    return ((Math.random() + Math.random()) / 2) * max;
+}
+
+function recognizeDoodle(){
+    if(drawPoints.length < 10){
+        alert("涂鸦线条太少，请多画一点怪物轮廓！");
+        return;
+    }
+    const stat = analyzeDoodleFeature(drawPoints);
+    currentDoodleData = {points:drawPoints,stat,img:drawCanvas.toDataURL()};
+    const typeIdx = Math.floor(Math.random() * MONSTER_TYPES.length);
+    const monsterType = MONSTER_TYPES[typeIdx];
+    const weaponList = EQUIP_LIST.filter(e=>e.type==="weapon");
+    const armorList = EQUIP_LIST.filter(e=>e.type==="armor");
+    const randWeapon = weaponList[Math.floor(Math.random()*weaponList.length)];
+    const randArmor = armorList[Math.floor(Math.random()*armorList.length)];
+
+    // 基础属性 0-100 正态分布，中间值居多，极端值少见
+    const baseAtk = Math.min(100, Math.max(0, normalRandom(80) + stat.lineCount/120));
+    const baseDef = Math.min(100, Math.max(0, normalRandom(75) + stat.closedArea/2000));
+    const baseSpd = Math.min(100, Math.max(0, normalRandom(70) + stat.curveRatio*30));
+    const baseCrit = Math.min(35, Math.max(3, normalRandom(25) + stat.sharpRatio*15));
+    const baseDodge = Math.min(30, Math.max(2, normalRandom(20) + stat.curveRatio*12));
+
+    // 装备加成叠加
+    const buff = {...randWeapon.buff,...randArmor.buff};
+    const finalAtk = Math.min(100, Math.max(0, baseAtk + (buff.atk||0))).toFixed(0)*1;
+    const finalDef = Math.min(100, Math.max(0, baseDef + (buff.def||0))).toFixed(0)*1;
+    const finalSpd = Math.min(100, Math.max(0, baseSpd + (buff.spd||0))).toFixed(0)*1;
+    const finalCritRate = Math.min(40, Math.max(2, baseCrit + (buff.crit||0))).toFixed(1)*1;
+    const finalDodgeRate = Math.min(35, Math.max(1, baseDodge + (buff.dodge||0))).toFixed(1)*1;
+
+    // 血量 800-3000 区间，拉开不同稀有度怪物血量差距
+    // 设计：基础血量低+属性加成高，让高属性怪物显著肉厚
+    const baseHp = 800 + normalRandom(150);
+    const attrHpBonus = finalAtk * 12 + finalDef * 10;
+    const doodleBonus = Math.min(400, stat.closedArea/300 + stat.lineCount/15);
+    const maxHp = Math.floor(Math.min(3000, Math.max(800, baseHp + attrHpBonus + doodleBonus)));
+
+    // 综合总分计算稀有度（严格控制概率：N40% R30% SR20% SSR8% UR2%）
+    // 阈值上调，使高等级怪物更稀有
+    const totalScore = finalAtk + finalDef + finalSpd + finalCritRate*2 + finalDodgeRate*2;
+    let rank, rankClass;
+    if(totalScore >= 350) { rank = "UR"; rankClass = "rank-UR"; }
+    else if(totalScore >= 315) { rank = "SSR"; rankClass = "rank-SSR"; }
+    else if(totalScore >= 275) { rank = "SR"; rankClass = "rank-SR"; }
+    else if(totalScore >= 225) { rank = "R"; rankClass = "rank-R"; }
+    else { rank = "N"; rankClass = "rank-N"; }
+
+    currentGenMonster = {
+        id:Date.now(),
+        name:monsterType.name,
+        desc:monsterType.desc,
+        doodleImg:currentDoodleData.img,
+        weapon:randWeapon,
+        armor:randArmor,
+        atk:finalAtk,
+        def:finalDef,
+        spd:finalSpd,
+        critRate:finalCritRate,
+        dodgeRate:finalDodgeRate,
+        maxHp:maxHp,
+        rank:rank,
+        rankClass:rankClass,
+        totalScore:totalScore
+    };
+    renderCardPreview();
+}
+
+// 涂鸦特征分析
+function analyzeDoodleFeature(points){
+    let lineCount = points.length;
+    let sharpCnt = 0, curveCnt = 0;
+    let minX=9999,maxX=0,minY=9999,maxY=0;
+    for(let i=1;i<points.length-1;i++){
+        const [x0,y0] = points[i-1];
+        const [x1,y1] = points[i];
+        const [x2,y2] = points[i+1];
+        const a1 = Math.atan2(y1-y0,x1-x0);
+        const a2 = Math.atan2(y2-y1,x2-x1);
+        const diff = Math.abs(a1-a2);
+        if(diff > 0.6) sharpCnt++;
+        else curveCnt++;
+        minX = Math.min(minX,x1);maxX=Math.max(maxX,x1);
+        minY = Math.min(minY,y1);maxY=Math.max(maxY,y1);
+    }
+    const w = maxX-minX, h=maxY-minY;
+    const closedArea = w*h;
+    const total = sharpCnt+curveCnt || 1;
+    const sharpRatio = sharpCnt/total;
+    const curveRatio = curveCnt/total;
+    return {lineCount,closedArea,sharpRatio,curveRatio};
+}
+
+// 渲染角色卡（10星对应0-100属性，每10点1星）
+function renderCardPreview(){
+    const m = currentGenMonster;
+    document.getElementById("emptyTip").classList.add("hidden");
+    document.getElementById("cardPreview").classList.remove("hidden");
+    const wrap = document.getElementById("previewCardWrap");
+    wrap.className = `rounded-xl overflow-hidden card-${m.rank}`;
+    const rankTag = document.getElementById("rankTag");
+    rankTag.innerText = m.rank;
+    rankTag.className = `px-3 py-1 rounded font-bold text-sm ${m.rankClass}`;
+
+    document.getElementById("cardName").innerText = m.name;
+    document.getElementById("cardDesc").innerText = m.desc;
+    document.getElementById("weaponName").innerText = m.weapon.name;
+    document.getElementById("weaponBuff").innerText = m.weapon.desc;
+    document.getElementById("armorName").innerText = m.armor.name;
+    document.getElementById("armorBuff").innerText = m.armor.desc;
+    document.getElementById("hpVal").innerText = m.maxHp;
+
+    // 10星渲染：每10点1星
+    const star = (val)=>{
+        let s = "";
+        for(let i=0;i<10;i++) s += i < Math.round(val/10) ? "★" : "☆";
+        return s;
+    };
+    document.getElementById("atkStar").innerText = star(m.atk);
+    document.getElementById("atkVal").innerText = m.atk;
+    document.getElementById("defStar").innerText = star(m.def);
+    document.getElementById("defVal").innerText = m.def;
+    document.getElementById("spdStar").innerText = star(m.spd);
+    document.getElementById("spdVal").innerText = m.spd;
+    document.getElementById("critStar").innerText = star(m.critRate*2);
+    document.getElementById("critVal").innerText = m.critRate + "%";
+    document.getElementById("dodgeStar").innerText = star(m.dodgeRate*2.5);
+    document.getElementById("dodgeVal").innerText = m.dodgeRate + "%";
+
+    const cardImg = document.getElementById("cardImg");
+    const cardCtx = cardImg.getContext("2d");
+    const img = new Image();
+    img.onload = ()=>{
+        cardCtx.clearRect(0,0,160,160);
+        cardCtx.drawImage(img,0,0,160,160);
+    };
+    img.src = m.doodleImg;
+}
+
+// 保存怪物
+function saveMonster(){
+    if(!currentGenMonster) return;
+    monsterLibrary.push(currentGenMonster);
+    localStorage.setItem("doodleMonsterLib",JSON.stringify(monsterLibrary));
+    alert(`【${currentGenMonster.name}】${currentGenMonster.rank}级怪物已保存至图鉴！`);
+    refreshLibrary();
+    refreshBattleSelect();
+}
+
+// ===================== 图鉴渲染 =====================
+function refreshLibrary(){
+    const listBox = document.getElementById("libraryList");
+    if(monsterLibrary.length === 0){
+        listBox.innerHTML = `<div class="text-slate-400 col-span-full py-10 text-center">暂无怪物，快去绘制涂鸦生成吧！</div>`;
+        return;
+    }
+    listBox.innerHTML = "";
+    monsterLibrary.forEach(m=>{
+        const div = document.createElement("div");
+        div.className = `bg-amber-50 rounded-lg p-3 card-shadow card-${m.rank}`;
+        div.innerHTML = `
+            <div class="flex justify-between items-center">
+                <h4 class="font-bold">${m.name}</h4>
+                <span class="px-2 py-0.5 rounded text-xs font-bold ${m.rankClass}">${m.rank}</span>
+            </div>
+            <canvas width="100" height="100" class="mx-auto mt-2"></canvas>
+            <p class="text-xs text-slate-500 mt-2 text-center">武器：${m.weapon.name}｜盔甲：${m.armor.name}</p>
+            <div class="text-xs mt-2 grid grid-cols-2 gap-1">
+                <span>攻击${m.atk}</span><span>防御${m.def}</span>
+                <span>速度${m.spd}</span><span>暴击${m.critRate}%</span>
+                <span>闪避${m.dodgeRate}%</span><span class="text-rose-600">血量${m.maxHp}</span>
+            </div>
+            <button onclick="delMonster(${m.id})" class="w-full mt-2 bg-red-100 text-red-600 py-1 rounded text-sm">删除</button>
+        `;
+        const c = div.querySelector("canvas");
+        const ctx = c.getContext("2d");
+        const img = new Image();
+        img.onload = ()=>ctx.drawImage(img,0,0,100,100);
+        img.src = m.doodleImg;
+        listBox.appendChild(div);
+    })
+}
+function delMonster(id){
+    monsterLibrary = monsterLibrary.filter(m=>m.id !== id);
+    localStorage.setItem("doodleMonsterLib",JSON.stringify(monsterLibrary));
+    refreshLibrary();
+    refreshBattleSelect();
+}
+
+// ===================== 对战模块（适配新数值伤害公式） =====================
+function refreshBattleSelect(){
+    const playerBox = document.getElementById("playerSelectBox");
+    const enemyBox = document.getElementById("enemySelectBox");
+    if(monsterLibrary.length === 0){
+        playerBox.innerHTML = `<p class="text-slate-400 text-sm">先去图鉴保存怪物</p>`;
+        enemyBox.innerHTML = `<p class="text-slate-400 text-sm">先去图鉴保存怪物</p>`;
+        return;
+    }
+    playerBox.innerHTML = "";
+    enemyBox.innerHTML = "";
+    monsterLibrary.forEach(m=>{
+        const pBtn = document.createElement("button");
+        pBtn.className = "w-full text-left border border-indigo-200 rounded p-2 hover:bg-indigo-50";
+        pBtn.innerText = `${m.name}【${m.rank}】攻${m.atk}防${m.def} 血量${m.maxHp}`;
+        pBtn.onclick = ()=>selectPlayer(m);
+        playerBox.appendChild(pBtn);
+
+        const eBtn = document.createElement("button");
+        eBtn.className = "w-full text-left border border-rose-200 rounded p-2 hover:bg-rose-50";
+        eBtn.innerText = `${m.name}【${m.rank}】攻${m.atk}防${m.def} 血量${m.maxHp}`;
+        eBtn.onclick = ()=>selectEnemy(m);
+        enemyBox.appendChild(eBtn);
+    })
+}
+function selectPlayer(m){
+    selectedPlayerMonster = JSON.parse(JSON.stringify(m));
+    selectedPlayerMonster.currentHp = m.maxHp;
+    selectedPlayerMonster.frozenTurns = 0;
+    const card = document.getElementById("playerMonsterCard");
+    card.classList.remove("hidden");
+    document.getElementById("playerBattleName").innerText = `${m.name}【${m.rank}】`;
+    document.getElementById("playerHp").innerText = m.maxHp;
+    document.getElementById("playerMaxHp").innerText = m.maxHp;
+    document.getElementById("playerHpBar").style.width = "100%";
+    document.getElementById("playerEffectLayer").innerHTML = "";
+    document.getElementById("playerClawLayer").innerHTML = "";
+    const c = document.getElementById("playerBattleImg");
+    const ctx = c.getContext("2d");
+    const img = new Image();
+    img.onload = ()=>{ctx.clearRect(0,0,160,160);ctx.drawImage(img,0,0,160,160);}
+    img.src = m.doodleImg;
+}
+function selectEnemy(m){
+    selectedEnemyMonster = JSON.parse(JSON.stringify(m));
+    selectedEnemyMonster.currentHp = m.maxHp;
+    selectedEnemyMonster.frozenTurns = 0;
+    const card = document.getElementById("enemyMonsterCard");
+    card.classList.remove("hidden");
+    document.getElementById("enemyBattleName").innerText = `${m.name}【${m.rank}】`;
+    document.getElementById("enemyHp").innerText = m.maxHp;
+    document.getElementById("enemyMaxHp").innerText = m.maxHp;
+    document.getElementById("enemyHpBar").style.width = "100%";
+    document.getElementById("enemyEffectLayer").innerHTML = "";
+    document.getElementById("enemyClawLayer").innerHTML = "";
+    const c = document.getElementById("enemyBattleImg");
+    const ctx = c.getContext("2d");
+    const img = new Image();
+    img.onload = ()=>{ctx.clearRect(0,0,160,160);ctx.drawImage(img,0,0,160,160);}
+    img.src = m.doodleImg;
+}
+
+// 爪痕动画（强化版：真实爪子划过效果，三层叠加：外发光+白色高光+暗红核心）
+// 爪痕只出现在怪物画布中央区域，动态对齐画布位置与尺寸
+function createClawSlash(layerId) {
+    const layer = document.getElementById(layerId);
+    const card = layer.parentElement;
+    const canvas = card.querySelector("canvas");
+    // 动态计算画布相对卡牌的偏移，使爪痕精准覆盖怪物中心
+    const canvasRect = canvas.getBoundingClientRect();
+    const layerRect = layer.getBoundingClientRect();
+    const offsetX = canvasRect.left - layerRect.left;
+    const offsetY = canvasRect.top - layerRect.top;
+
+    const wrap = document.createElement("div");
+    wrap.className = "claw-slash-anim-v2";
+    wrap.style.left = offsetX + "px";
+    wrap.style.top = offsetY + "px";
+    wrap.style.width = canvasRect.width + "px";
+    wrap.style.height = canvasRect.height + "px";
+    const uid = "claw" + Date.now() + Math.floor(Math.random()*1000);
+    wrap.innerHTML = `
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">
+            <defs>
+                <filter id="${uid}" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="0.5" result="b"/>
+                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+            </defs>
+            <g filter="url(#${uid})" stroke-linecap="round" fill="none">
+                <path class="claw-mark-glow" d="M 28 34 Q 40 42 50 50 Q 60 58 72 66" stroke="#ef4444" stroke-width="5" opacity="0.55"/>
+                <path class="claw-mark-glow" d="M 28 46 Q 40 54 50 62 Q 60 70 72 78" stroke="#ef4444" stroke-width="5" opacity="0.55"/>
+                <path class="claw-mark-glow" d="M 28 58 Q 40 66 50 74 Q 60 82 72 90" stroke="#ef4444" stroke-width="5" opacity="0.55"/>
+                <path class="claw-mark-main" d="M 28 34 Q 40 42 50 50 Q 60 58 72 66" stroke="#ffffff" stroke-width="1.8"/>
+                <path class="claw-mark-main" d="M 28 46 Q 40 54 50 62 Q 60 70 72 78" stroke="#ffffff" stroke-width="1.8"/>
+                <path class="claw-mark-main" d="M 28 58 Q 40 66 50 74 Q 60 82 72 90" stroke="#ffffff" stroke-width="1.8"/>
+                <path class="claw-mark-core" d="M 28 34 Q 40 42 50 50 Q 60 58 72 66" stroke="#7f1d1d" stroke-width="0.6" opacity="0.9"/>
+                <path class="claw-mark-core" d="M 28 46 Q 40 54 50 62 Q 60 70 72 78" stroke="#7f1d1d" stroke-width="0.6" opacity="0.9"/>
+                <path class="claw-mark-core" d="M 28 58 Q 40 66 50 74 Q 60 82 72 90" stroke="#7f1d1d" stroke-width="0.6" opacity="0.9"/>
+            </g>
+        </svg>
+    `;
+    layer.appendChild(wrap);
+    setTimeout(()=>wrap.remove(), 600);
+}
+// 伤害飘字
+function createFloatText(targetLayerId, text, type) {
+    const layer = document.getElementById(targetLayerId);
+    const span = document.createElement("span");
+    span.className = "float-dmg-text";
+    if(type === "dodge"){
+        span.classList.add("dodge-text");
+        span.innerText = "闪避!";
+    }else if(type === "crit"){
+        span.classList.add("crit-dmg");
+        span.innerText = `暴击-${text}`;
+    }else if(type === "train"){
+        span.classList.add("train-dmg-text");
+        span.innerText = `🚂 -${text}`;
+    }else if(type === "freeze"){
+        span.classList.add("freeze-dmg-text");
+        span.innerText = `❄️ 冰冻!`;
+    }else{
+        span.classList.add("normal-dmg");
+        span.innerText = `-${text}`;
+    }
+    layer.appendChild(span);
+    setTimeout(()=>span.remove(), (type === "train" || type === "freeze") ? 1300 : 800);
+}
+// 延迟工具
+function delay(ms){ return new Promise(res=>setTimeout(res,ms)); }
+// 更新血条UI
+function updateBattleHpUI(){
+    const p = selectedPlayerMonster;
+    document.getElementById("playerHp").innerText = p.currentHp;
+    document.getElementById("playerHpBar").style.width = (p.currentHp / p.maxHp * 100) + "%";
+
+    const e = selectedEnemyMonster;
+    document.getElementById("enemyHp").innerText = e.currentHp;
+    document.getElementById("enemyHpBar").style.width = (e.currentHp / e.maxHp * 100) + "%";
+}
+// 添加战斗日志
+function addBattleLog(text,cls=""){
+    const logBox = document.getElementById("battleLog");
+    const p = document.createElement("p");
+    p.className = cls;
+    p.innerText = text;
+    logBox.appendChild(p);
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+// 列车召唤（超级大招）：每回合5%概率触发，固定200伤害，无视防御与闪避
+// 动画：列车从攻击方一侧驶来 → 撞飞防守方 → 防守方从天上掉回卡片
+async function summonTrain(attacker, defender, defSide){
+    const atkName = attacker.name;
+    const defName = defender.name;
+    const targetCanvas = defSide === "player"
+        ? document.getElementById("playerBattleImg")
+        : document.getElementById("enemyBattleImg");
+    const targetLayer = defSide === "player" ? "playerEffectLayer" : "enemyEffectLayer";
+
+    addBattleLog(`【超级大招】${atkName} 召唤出神秘列车冲向 ${defName}！`, "text-red-600 font-bold");
+
+    const battleGrid = document.getElementById("battleGrid");
+    const overlay = document.createElement("div");
+    overlay.className = "train-overlay";
+    battleGrid.appendChild(overlay);
+
+    // 列车方向：防守方在右(defSide==="enemy")则列车从左进，反之从右进
+    const fromLeft = defSide === "enemy";
+
+    const train = document.createElement("div");
+    train.className = `train-vehicle ${fromLeft ? "train-move-left" : "train-move-right"}`;
+    // 动态定位列车纵向位置对齐防守方画布
+    const canvasRect = targetCanvas.getBoundingClientRect();
+    const gridRect = battleGrid.getBoundingClientRect();
+    const trainTop = (canvasRect.top - gridRect.top) + canvasRect.height / 2;
+    train.style.top = trainTop + "px";
+    train.innerHTML = `
+        <div class="train-smoke">💨💨</div>
+        <div class="train-body">${fromLeft ? "🚃🚃🚂" : "🚂🚃🚃"}</div>
+    `;
+    overlay.appendChild(train);
+
+    // 等待列车开到防守方位置（约1s时撞击）
+    await delay(1000);
+
+    // 撞击！屏幕震动 + 防守方被撞飞（沿列车行进方向飞出）
+    battleGrid.classList.add("screen-shake");
+    targetCanvas.classList.add(fromLeft ? "knock-fly-right" : "knock-fly-left");
+
+    await delay(600);
+    battleGrid.classList.remove("screen-shake");
+
+    // 列车继续开走
+    await delay(700);
+    train.remove();
+
+    // 防守方在天上停留一下
+    await delay(350);
+
+    // 防守方从天上掉下来回到卡片
+    targetCanvas.classList.remove(fromLeft ? "knock-fly-right" : "knock-fly-left");
+    targetCanvas.classList.add("fall-from-sky-anim");
+
+    // 应用200点固定伤害（无视防御与闪避）
+    const fixedDmg = 200;
+    defender.currentHp = Math.max(0, defender.currentHp - fixedDmg);
+
+    createFloatText(targetLayer, fixedDmg, "train");
+    addBattleLog(`🚂 列车撞飞了 ${defName}！造成 ${fixedDmg} 点固定伤害，剩余血量：${defender.currentHp}`, "text-red-600 font-bold");
+    updateBattleHpUI();
+
+    await delay(1000);
+    targetCanvas.classList.remove("fall-from-sky-anim");
+    overlay.remove();
+    await delay(300);
+}
+
+// 空调冰冻（超级大招）：5%概率触发，冻结对手一回合无法行动
+// 动画：寒气闪光 → 冰块覆盖怪物 → 下回合攻击时冰碎解冻
+async function summonACFreeze(attacker, defender, defSide){
+    const targetCanvas = defSide === "player"
+        ? document.getElementById("playerBattleImg")
+        : document.getElementById("enemyBattleImg");
+    const targetLayer = defSide === "player" ? "playerEffectLayer" : "enemyEffectLayer";
+
+    addBattleLog(`【超级大招】${attacker.name} 释放空调冰冻！${defender.name} 被寒气冻结！`, "text-cyan-600 font-bold");
+
+    // 寒气闪烁
+    targetCanvas.classList.add("freeze-flash");
+    setTimeout(()=>targetCanvas.classList.remove("freeze-flash"), 500);
+    await delay(500);
+
+    // 冰块覆盖怪物，设置冰冻状态（2回合无法行动）
+    showIceBlock(defSide);
+    defender.frozenTurns = 2;
+    createFloatText(targetLayer, 0, "freeze");
+
+    await delay(800);
+}
+
+// 在防守方画布上覆盖冰块
+function showIceBlock(side){
+    const layerId = side === "player" ? "playerEffectLayer" : "enemyEffectLayer";
+    const layer = document.getElementById(layerId);
+    const card = layer.parentElement;
+    const canvas = card.querySelector("canvas");
+    const canvasRect = canvas.getBoundingClientRect();
+    const layerRect = layer.getBoundingClientRect();
+    const offsetX = canvasRect.left - layerRect.left;
+    const offsetY = canvasRect.top - layerRect.top;
+
+    // 移除旧冰块
+    const old = document.getElementById(`${side}IceBlock`);
+    if(old) old.remove();
+
+    const ice = document.createElement("div");
+    ice.className = "ice-block-overlay";
+    ice.id = `${side}IceBlock`;
+    ice.style.left = offsetX + "px";
+    ice.style.top = offsetY + "px";
+    ice.style.width = canvasRect.width + "px";
+    ice.style.height = canvasRect.height + "px";
+    ice.innerHTML = `
+        <div class="ice-cube"></div>
+        <div class="ice-cracks"></div>
+        <div class="ice-crystals">❄️❄️❄️</div>
+    `;
+    layer.appendChild(ice);
+}
+
+// 冰碎解冻动画
+async function thawMonster(side){
+    const ice = document.getElementById(`${side}IceBlock`);
+    if(ice){
+        ice.classList.add("ice-shatter");
+        setTimeout(()=>ice.remove(), 600);
+    }
+    await delay(600);
+}
+
+// 单次攻击逻辑（适配新数值伤害公式）
+async function doAttack(attacker,defender,defSide){
+    const atkName = attacker.name;
+    const defName = defender.name;
+    const atkSide = defSide === "player" ? "enemy" : "player";
+    const targetLayer = defSide === "player" ? "playerEffectLayer" : "enemyEffectLayer";
+    const targetClawLayer = defSide === "player" ? "playerClawLayer" : "enemyClawLayer";
+    const targetCanvas = defSide === "player" ? document.getElementById("playerBattleImg") : document.getElementById("enemyBattleImg");
+
+    // 冰冻检查：被冰冻则跳过本回合，仅最后一回合解冻
+    if(attacker.frozenTurns > 0){
+        attacker.frozenTurns--;
+        const remain = attacker.frozenTurns;
+        addBattleLog(`❄️ ${atkName} 被冰冻，无法行动！${remain > 0 ? `(剩余${remain}回合)` : "(冰碎解冻)"}`, "text-cyan-600 font-bold");
+        if(remain === 0){
+            await thawMonster(atkSide);
+        } else {
+            await delay(500);
+        }
+        await delay(300);
+        return;
+    }
+
+    // 5% 概率召唤列车（超级大招），无视闪避防御，固定200伤害
+    if(Math.random() < 0.05){
+        await summonTrain(attacker, defender, defSide);
+        return;
+    }
+
+    // 5% 概率空调冰冻（超级大招），冻结对手一回合
+    if(Math.random() < 0.05){
+        await summonACFreeze(attacker, defender, defSide);
+        return;
+    }
+
+    // 闪避判定
+    const dodgeRoll = Math.random()*100;
+    if(dodgeRoll < defender.dodgeRate){
+        createFloatText(targetLayer, "", "dodge");
+        addBattleLog(`${defName} 灵巧闪避了${atkName}的攻击！`,"text-teal-600");
+        targetCanvas.classList.add("dodge-fade-anim");
+        setTimeout(()=>targetCanvas.classList.remove("dodge-fade-anim"),600);
+        return;
+    }
+    // 暴击判定
+    let critMul = 1;
+    let isCrit = false;
+    const critRoll = Math.random()*100;
+    if(critRoll < attacker.critRate){
+        critMul = 1.8;
+        isCrit = true;
+        addBattleLog(`【暴击！】${atkName}打出致命一击！`,"text-orange-500 font-semibold");
+        targetCanvas.classList.add("crit-glow");
+        setTimeout(()=>targetCanvas.classList.remove("crit-glow"),500);
+    }
+    // 伤害公式：攻击*3 - 防御*1.2，保底20点伤害（拉长战斗回合）
+    let rawDmg = attacker.atk * 3 * critMul;
+    let finalDmg = Math.max(20, rawDmg - defender.def * 1.2);
+    finalDmg = Math.floor(finalDmg);
+    defender.currentHp = Math.max(0, defender.currentHp - finalDmg);
+
+    // 爪痕+飘字特效
+    createClawSlash(targetClawLayer);
+    createFloatText(targetLayer, finalDmg, isCrit ? "crit" : "normal");
+    // 受击抖动红光
+    targetCanvas.classList.add("hit-shake","hit-flash");
+    setTimeout(()=>targetCanvas.classList.remove("hit-shake","hit-flash"),400);
+
+    addBattleLog(`${atkName} 攻击${defName}，造成 ${finalDmg} 点伤害，剩余血量：${defender.currentHp}`);
+    updateBattleHpUI();
+    await delay(700);
+}
+
+// 开始战斗
+async function startBattle(){
+    if(!selectedPlayerMonster || !selectedEnemyMonster){
+        alert("请先选择我方与敌方怪物！");
+        return;
+    }
+    const logBox = document.getElementById("battleLog");
+    logBox.innerHTML = `<p class="font-bold text-indigo-600">===== 战斗开始 =====</p>`;
+    // 重置状态
+    selectedPlayerMonster.currentHp = selectedPlayerMonster.maxHp;
+    selectedEnemyMonster.currentHp = selectedEnemyMonster.maxHp;
+    selectedPlayerMonster.frozenTurns = 0;
+    selectedEnemyMonster.frozenTurns = 0;
+    document.getElementById("playerEffectLayer").innerHTML = "";
+    document.getElementById("enemyEffectLayer").innerHTML = "";
+    document.getElementById("playerClawLayer").innerHTML = "";
+    document.getElementById("enemyClawLayer").innerHTML = "";
+    document.getElementById("playerBattleImg").classList.remove("win-gold-anim","freeze-flash");
+    document.getElementById("enemyBattleImg").classList.remove("win-gold-anim","freeze-flash");
+    updateBattleHpUI();
+    await delay(600);
+
+    let round = 1;
+    // 回合循环
+    while(selectedPlayerMonster.currentHp > 0 && selectedEnemyMonster.currentHp > 0){
+        addBattleLog(`【第${round}回合】`,"font-bold text-slate-800");
+        // 速度高者先手
+        let first,second,secondSide;
+        if(selectedPlayerMonster.spd >= selectedEnemyMonster.spd){
+            first = selectedPlayerMonster; second = selectedEnemyMonster;
+            secondSide = "enemy";
+        }else{
+            first = selectedEnemyMonster; second = selectedPlayerMonster;
+            secondSide = "player";
+        }
+        // 先手攻击
+        await doAttack(first,second, secondSide);
+        if(second.currentHp <= 0) break;
+        await delay(800);
+        // 后手反击
+        await doAttack(second,first, secondSide==="enemy" ? "player" : "enemy");
+        if(first.currentHp <= 0) break;
+        round++;
+        await delay(1000);
+    }
+
+    // 战斗结算
+    await delay(500);
+    if(selectedPlayerMonster.currentHp <= 0 && selectedEnemyMonster.currentHp <=0){
+        addBattleLog("双方同时倒下，平局！","text-orange-500 font-bold");
+    }else if(selectedPlayerMonster.currentHp <=0){
+        addBattleLog(`${selectedEnemyMonster.name} 获得胜利！`,"text-rose-600 font-bold");
+        document.getElementById("enemyBattleImg").classList.add("win-gold-anim");
+    }else{
+        addBattleLog(`${selectedPlayerMonster.name} 获得胜利！`,"text-indigo-600 font-bold");
+        document.getElementById("playerBattleImg").classList.add("win-gold-anim");
+    }
+    addBattleLog("===== 战斗结束 =====","font-bold text-slate-800");
+}
+
+// 标签页切换
+function switchTab(tabId){
+    document.querySelectorAll(".tab-content").forEach(el=>el.classList.add("hidden"));
+    document.getElementById(`tab-${tabId}`).classList.remove("hidden");
+    // 切换按钮样式
+    document.querySelectorAll(".tab-btn").forEach(btn=>{
+        btn.classList.remove("btn-primary","text-white");
+        btn.classList.add("bg-slate-200");
+    })
+    event.target.classList.remove("bg-slate-200");
+    event.target.classList.add("btn-primary","text-white");
+}
+
+// 页面初始化
+window.onload = ()=>{
+    refreshLibrary();
+    refreshBattleSelect();
+}
+</script>
+</body>
+</html>
