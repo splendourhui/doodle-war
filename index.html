@@ -479,60 +479,62 @@ const MONSTER_TYPES = [
     {name:"黑锋狮鹫",tag:"尖角大翅膀",desc:"天空掠食者，攻击暴击双天花板"}
 ];
 
-// 50件装备（适配0-100属性体系）
+// 装备系统（属性加成降低，添加被动特性增加策略性）
+// 特性类型: critBonus(暴击伤害+), dmgBonus(伤害+), defBonus(防御+), freezeResist(冰冻抵抗),
+//           healOnHit(攻击回血), reflectDmg(反伤), speedBonus(速度+), dodgeBonus(闪避+)
 const EQUIP_LIST = [
-    // 武器28件
-    {name:"巨锤",type:"weapon",buff:{atk:18,crit:6},desc:"极高伤害击退"},
-    {name:"淬毒匕首",type:"weapon",buff:{atk:10,spd:15,crit:10},desc:"高速高暴击"},
-    {name:"雷霆长剑",type:"weapon",buff:{atk:14,spd:12},desc:"均衡近战武器"},
-    {name:"熔岩战斧",type:"weapon",buff:{atk:28,spd:-10},desc:"超高攻击降低速度"},
-    {name:"暗影短刃",type:"weapon",buff:{spd:20,crit:15},desc:"极致暴击高速"},
-    {name:"圣光法杖",type:"weapon",buff:{atk:12,dodge:7},desc:"带闪避加成"},
-    {name:"骨刺长矛",type:"weapon",buff:{atk:16,crit:4},desc:"稳定输出武器"},
-    {name:"螺旋飞镖",type:"weapon",buff:{spd:22,dodge:5},desc:"极速远程"},
-    {name:"山岭巨斧",type:"weapon",buff:{atk:30,def:12,spd:-14},desc:"肉盾重型武器"},
-    {name:"冰晶刺刃",type:"weapon",buff:{atk:13,spd:14,crit:7},desc:"均衡输出"},
-    {name:"蜂刺短矛",type:"weapon",buff:{spd:21,crit:9},desc:"高频攻击"},
-    {name:"幽魂镰刀",type:"weapon",buff:{atk:11,dodge:10},desc:"灵体专用武器"},
-    {name:"沙蝎尾刺",type:"weapon",buff:{atk:14,def:11},desc:"攻防兼顾"},
-    {name:"树人木杖",type:"weapon",buff:{def:14,dodge:6},desc:"防御型武器"},
-    {name:"幻彩花瓣刃",type:"weapon",buff:{spd:25,dodge:14},desc:"极限闪避高速"},
-    {name:"陨星重剑",type:"weapon",buff:{atk:35,def:10,spd:-16},desc:"顶级重型巨剑"},
-    {name:"疾风袖箭",type:"weapon",buff:{spd:28,crit:10,dodge:4},desc:"超高速远程偷袭"},
-    {name:"腐毒骨爪",type:"weapon",buff:{atk:15,crit:11,dodge:-3},desc:"毒系高暴击爪刃"},
-    {name:"极光角刃",type:"weapon",buff:{spd:24,dodge:12,crit:5},desc:"灵兽专属轻武器"},
-    {name:"碎岩开山刀",type:"weapon",buff:{atk:26,def:14,spd:-13},desc:"山地战士武器"},
-    {name:"迷雾雾刃",type:"weapon",buff:{dodge:20,atk:9,crit:-5},desc:"极致闪避隐身刃"},
-    {name:"星尘萤火杖",type:"weapon",buff:{spd:26,crit:12,dodge:6},desc:"精灵高频暴击法杖"},
-    {name:"灰烬魔刃",type:"weapon",buff:{atk:32,crit:14,def:-12},desc:"恶魔狂暴之刃"},
-    {name:"潮汐三叉戟",type:"weapon",buff:{atk:17,dodge:9,spd:10},desc:"海洋均衡武器"},
-    {name:"黄铜机械拳套",type:"weapon",buff:{atk:19,def:16,spd:-9},desc:"傀儡专用拳套"},
-    {name:"荆棘骨刺鞭",type:"weapon",buff:{atk:12,spd:18,def:9},desc:"持续缠绕伤害"},
-    {name:"琉璃穿刺针",type:"weapon",buff:{spd:30,crit:18,atk:-8},desc:"极致暴击高速针刃"},
-    {name:"黑锋狮鹫爪",type:"weapon",buff:{atk:27,crit:16,spd:8},desc:"天空掠食利爪"},
-    // 盔甲22件
-    {name:"皮革盔甲",type:"armor",buff:{def:13,dodge:4},desc:"均衡轻甲"},
-    {name:"玄铁重甲",type:"armor",buff:{def:30,spd:-11},desc:"最高防御重甲"},
-    {name:"风纹斗篷",type:"armor",buff:{spd:18,dodge:9},desc:"高速闪避衣"},
-    {name:"荆棘皮甲",type:"armor",buff:{def:16,atk:9},desc:"反伤轻型甲"},
-    {name:"冰晶护盾",type:"armor",buff:{def:26,crit:-4},desc:"极致防御"},
-    {name:"暗影披风",type:"armor",buff:{dodge:14,spd:11},desc:"超高闪避"},
-    {name:"岩石战甲",type:"armor",buff:{def:28,dodge:-5},desc:"厚重堡垒甲"},
-    {name:"圣光法袍",type:"armor",buff:{def:12,dodge:6,crit:5},desc:"全能法袍"},
-    {name:"毒鳞软甲",type:"armor",buff:{dodge:8,atk:10},desc:"刺客专用甲"},
-    {name:"龙鳞铠甲",type:"armor",buff:{def:22,atk:12,spd:8},desc:"传说均衡甲"},
-    {name:"霜石护板",type:"armor",buff:{def:25,crit:4},desc:"防御暴击兼顾"},
-    {name:"泥浆软甲",type:"armor",buff:{dodge:20,def:-10},desc:"极致闪避牺牲防御"},
-    {name:"骸骨肩甲",type:"armor",buff:{spd:16,crit:10},desc:"刺客护甲"},
-    {name:"飞翼战衣",type:"armor",buff:{spd:20,dodge:7},desc:"高速飞行甲"},
-    {name:"深渊触手甲",type:"armor",buff:{atk:11,dodge:10},desc:"输出闪避兼顾"},
-    {name:"极光白鹿绒袍",type:"armor",buff:{spd:24,dodge:13,def:-9},desc:"灵兽极致速度甲"},
-    {name:"黄铜机械外甲",type:"armor",buff:{def:32,atk:9,spd:-14},desc:"傀儡顶级重甲"},
-    {name:"星尘薄纱",type:"armor",buff:{dodge:24,spd:20,def:-15},desc:"精灵极限闪避纱衣"},
-    {name:"灰烬恶魔甲",type:"armor",buff:{atk:15,def:24,dodge:-7},desc:"恶魔高攻高防重甲"},
-    {name:"潮汐海藻甲",type:"armor",buff:{dodge:11,def:21,spd:10},desc:"海洋均衡软甲"},
-    {name:"碎岩穿山甲鳞甲",type:"armor",buff:{def:35,crit:-6,spd:-12},desc:"全游戏最高物理防御"},
-    {name:"迷雾夜行衣",type:"armor",buff:{dodge:22,spd:15,atk:-9},desc:"隐身潜行专用衣"}
+    // 武器
+    {name:"巨锤",type:"weapon",buff:{atk:6,crit:2},trait:"dmgBonus",traitVal:15,desc:"重击：伤害+15%"},
+    {name:"淬毒匕首",type:"weapon",buff:{atk:3,spd:5,crit:3},trait:"healOnHit",traitVal:5,desc:"毒刃：攻击回血5%"},
+    {name:"雷霆长剑",type:"weapon",buff:{atk:5,spd:4},trait:"critBonus",traitVal:20,desc:"雷刃：暴击伤害+20%"},
+    {name:"熔岩战斧",type:"weapon",buff:{atk:10,spd:-3},trait:"dmgBonus",traitVal:20,desc:"烈焰：伤害+20%"},
+    {name:"暗影短刃",type:"weapon",buff:{spd:7,crit:5},trait:"critBonus",traitVal:25,desc:"暗影：暴击伤害+25%"},
+    {name:"圣光法杖",type:"weapon",buff:{atk:4,dodge:2},trait:"healOnHit",traitVal:8,desc:"圣光：攻击回血8%"},
+    {name:"骨刺长矛",type:"weapon",buff:{atk:5,crit:1},trait:"dmgBonus",traitVal:10,desc:"穿刺：伤害+10%"},
+    {name:"螺旋飞镖",type:"weapon",buff:{spd:7,dodge:2},trait:"speedBonus",traitVal:10,desc:"回旋：速度+10%"},
+    {name:"山岭巨斧",type:"weapon",buff:{atk:10,def:4,spd:-4},trait:"defBonus",traitVal:10,desc:"巨力：防御+10%"},
+    {name:"冰晶刺刃",type:"weapon",buff:{atk:4,spd:5,crit:2},trait:"freezeResist",traitVal:30,desc:"冰晶：冰冻抵抗30%"},
+    {name:"蜂刺短矛",type:"weapon",buff:{spd:7,crit:3},trait:"speedBonus",traitVal:15,desc:"蜂刺：速度+15%"},
+    {name:"幽魂镰刀",type:"weapon",buff:{atk:4,dodge:3},trait:"dodgeBonus",traitVal:10,desc:"幽魂：闪避+10%"},
+    {name:"沙蝎尾刺",type:"weapon",buff:{atk:5,def:4},trait:"defBonus",traitVal:15,desc:"蝎刺：防御+15%"},
+    {name:"树人木杖",type:"weapon",buff:{def:5,dodge:2},trait:"healOnHit",traitVal:10,desc:"生命：攻击回血10%"},
+    {name:"幻彩花瓣刃",type:"weapon",buff:{spd:8,dodge:5},trait:"dodgeBonus",traitVal:15,desc:"幻彩：闪避+15%"},
+    {name:"陨星重剑",type:"weapon",buff:{atk:12,def:3,spd:-5},trait:"dmgBonus",traitVal:30,desc:"陨星：伤害+30%"},
+    {name:"疾风袖箭",type:"weapon",buff:{spd:9,crit:3,dodge:1},trait:"speedBonus",traitVal:20,desc:"疾风：速度+20%"},
+    {name:"腐毒骨爪",type:"weapon",buff:{atk:5,crit:4,dodge:-1},trait:"healOnHit",traitVal:12,desc:"腐毒：攻击回血12%"},
+    {name:"极光角刃",type:"weapon",buff:{spd:8,dodge:4,crit:2},trait:"dodgeBonus",traitVal:20,desc:"极光：闪避+20%"},
+    {name:"碎岩开山刀",type:"weapon",buff:{atk:9,def:5,spd:-4},trait:"defBonus",traitVal:20,desc:"碎岩：防御+20%"},
+    {name:"迷雾雾刃",type:"weapon",buff:{dodge:7,atk:3,crit:-2},trait:"dodgeBonus",traitVal:25,desc:"迷雾：闪避+25%"},
+    {name:"星尘萤火杖",type:"weapon",buff:{spd:8,crit:4,dodge:2},trait:"critBonus",traitVal:30,desc:"星尘：暴击伤害+30%"},
+    {name:"灰烬魔刃",type:"weapon",buff:{atk:11,crit:5,def:-4},trait:"dmgBonus",traitVal:35,desc:"灰烬：伤害+35%"},
+    {name:"潮汐三叉戟",type:"weapon",buff:{atk:6,dodge:3,spd:3},trait:"freezeResist",traitVal:50,desc:"潮汐：冰冻抵抗50%"},
+    {name:"黄铜机械拳套",type:"weapon",buff:{atk:7,def:5,spd:-3},trait:"defBonus",traitVal:25,desc:"机械：防御+25%"},
+    {name:"荆棘骨刺鞭",type:"weapon",buff:{atk:4,spd:6,def:3},trait:"reflectDmg",traitVal:10,desc:"荆棘：反伤10%"},
+    {name:"琉璃穿刺针",type:"weapon",buff:{spd:10,crit:6,atk:-3},trait:"critBonus",traitVal:35,desc:"琉璃：暴击伤害+35%"},
+    {name:"黑锋狮鹫爪",type:"weapon",buff:{atk:9,crit:5,spd:3},trait:"dmgBonus",traitVal:25,desc:"狮鹫：伤害+25%"},
+    // 盔甲
+    {name:"皮革盔甲",type:"armor",buff:{def:4,dodge:1},trait:"defBonus",traitVal:5,desc:"皮甲：防御+5%"},
+    {name:"玄铁重甲",type:"armor",buff:{def:10,spd:-4},trait:"defBonus",traitVal:30,desc:"重甲：防御+30%"},
+    {name:"风纹斗篷",type:"armor",buff:{spd:6,dodge:3},trait:"speedBonus",traitVal:10,desc:"风纹：速度+10%"},
+    {name:"荆棘皮甲",type:"armor",buff:{def:5,atk:3},trait:"reflectDmg",traitVal:15,desc:"荆棘：反伤15%"},
+    {name:"冰晶护盾",type:"armor",buff:{def:9,crit:-1},trait:"freezeResist",traitVal:50,desc:"冰晶：冰冻抵抗50%"},
+    {name:"暗影披风",type:"armor",buff:{dodge:5,spd:4},trait:"dodgeBonus",traitVal:15,desc:"暗影：闪避+15%"},
+    {name:"岩石战甲",type:"armor",buff:{def:9,dodge:-2},trait:"defBonus",traitVal:35,desc:"岩石：防御+35%"},
+    {name:"圣光法袍",type:"armor",buff:{def:4,dodge:2,crit:2},trait:"healOnHit",traitVal:5,desc:"圣光：攻击回血5%"},
+    {name:"毒鳞软甲",type:"armor",buff:{dodge:3,atk:3},trait:"reflectDmg",traitVal:8,desc:"毒鳞：反伤8%"},
+    {name:"龙鳞铠甲",type:"armor",buff:{def:7,atk:4,spd:3},trait:"dmgBonus",traitVal:10,desc:"龙鳞：伤害+10%"},
+    {name:"霜石护板",type:"armor",buff:{def:8,crit:1},trait:"freezeResist",traitVal:40,desc:"霜石：冰冻抵抗40%"},
+    {name:"泥浆软甲",type:"armor",buff:{dodge:7,def:-3},trait:"dodgeBonus",traitVal:30,desc:"泥浆：闪避+30%"},
+    {name:"骸骨肩甲",type:"armor",buff:{spd:5,crit:3},trait:"critBonus",traitVal:15,desc:"骸骨：暴击伤害+15%"},
+    {name:"飞翼战衣",type:"armor",buff:{spd:7,dodge:2},trait:"speedBonus",traitVal:15,desc:"飞翼：速度+15%"},
+    {name:"深渊触手甲",type:"armor",buff:{atk:4,dodge:3},trait:"dodgeBonus",traitVal:10,desc:"深渊：闪避+10%"},
+    {name:"极光白鹿绒袍",type:"armor",buff:{spd:8,dodge:4,def:-3},trait:"speedBonus",traitVal:25,desc:"极光：速度+25%"},
+    {name:"黄铜机械外甲",type:"armor",buff:{def:11,atk:3,spd:-5},trait:"defBonus",traitVal:40,desc:"机械：防御+40%"},
+    {name:"星尘薄纱",type:"armor",buff:{dodge:8,spd:7,def:-5},trait:"dodgeBonus",traitVal:35,desc:"星尘：闪避+35%"},
+    {name:"灰烬恶魔甲",type:"armor",buff:{atk:5,def:8,dodge:-2},trait:"dmgBonus",traitVal:20,desc:"灰烬：伤害+20%"},
+    {name:"潮汐海藻甲",type:"armor",buff:{dodge:4,def:7,spd:3},trait:"freezeResist",traitVal:30,desc:"潮汐：冰冻抵抗30%"},
+    {name:"碎岩穿山甲鳞甲",type:"armor",buff:{def:12,crit:-2,spd:-4},trait:"defBonus",traitVal:50,desc:"碎岩：防御+50%"},
+    {name:"迷雾夜行衣",type:"armor",buff:{dodge:7,spd:5,atk:-3},trait:"dodgeBonus",traitVal:40,desc:"迷雾：闪避+40%"}
 ];
 
 // 本地存储怪物库
@@ -640,6 +642,13 @@ function recognizeDoodle(){
     else if(totalScore >= 225) { rank = "R"; rankClass = "rank-R"; }
     else { rank = "N"; rankClass = "rank-N"; }
 
+    const traits = {};
+    [randWeapon, randArmor].forEach(eq => {
+        if(eq.trait){
+            traits[eq.trait] = (traits[eq.trait] || 0) + eq.traitVal;
+        }
+    });
+
     currentGenMonster = {
         id:Date.now(),
         name:monsterType.name,
@@ -647,6 +656,7 @@ function recognizeDoodle(){
         doodleImg:currentDoodleData.img,
         weapon:randWeapon,
         armor:randArmor,
+        traits:traits,
         atk:finalAtk,
         def:finalDef,
         spd:finalSpd,
@@ -759,6 +769,7 @@ function refreshLibrary(){
             </div>
             <canvas width="100" height="100" class="mx-auto mt-2"></canvas>
             <p class="text-xs text-slate-500 mt-2 text-center">武器：${m.weapon.name}｜盔甲：${m.armor.name}</p>
+            <p class="text-xs text-indigo-600 mt-1 text-center">${m.weapon.desc}｜${m.armor.desc}</p>
             <div class="text-xs mt-2 grid grid-cols-2 gap-1">
                 <span>攻击${m.atk}</span><span>防御${m.def}</span>
                 <span>速度${m.spd}</span><span>暴击${m.critRate}%</span>
@@ -1074,6 +1085,10 @@ async function doAttack(attacker, defender, defSide, spdDiff = 0){
     const targetCanvas = defSide === "player" ? document.getElementById("playerBattleImg") : document.getElementById("enemyBattleImg");
     // 速度差伤害加成：每点速度差增加0.5%伤害（最多20%）
     const spdBonus = Math.min(0.2, spdDiff * 0.005);
+    
+    // 获取装备特性
+    const atkTraits = attacker.traits || {};
+    const defTraits = defender.traits || {};
 
     // 冰冻检查：被冰冻则跳过本回合，解冻时受到冻伤伤害
     if(attacker.frozenTurns > 0){
@@ -1084,7 +1099,7 @@ async function doAttack(attacker, defender, defSide, spdDiff = 0){
             await thawMonster(atkSide);
             // 解冻时受到冻伤伤害
             if(attacker.frostDamage > 0){
-                const frostDmg = Math.floor(attacker.frostDamage);
+                const frostDmg = Math.floor(attacker.frostDamage * (1 - (atkTraits.freezeResist || 0)/100));
                 attacker.currentHp = Math.max(0, attacker.currentHp - frostDmg);
                 addBattleLog(`💧 ${atkName} 解冻时受到 ${frostDmg} 点冻伤伤害！`, "text-cyan-500 font-bold");
                 updateBattleHpUI();
@@ -1105,15 +1120,21 @@ async function doAttack(attacker, defender, defSide, spdDiff = 0){
 
     // 5% 概率空调冰冻（超级大招），冻结对手一回合
     if(Math.random() < 0.05){
-        await summonACFreeze(attacker, defender, defSide);
+        const freezeChance = 0.05 * (1 - (defTraits.freezeResist || 0)/100);
+        if(Math.random() < freezeChance || defTraits.freezeResist === undefined){
+            await summonACFreeze(attacker, defender, defSide);
+        } else {
+            addBattleLog(`❄️ ${defName} 抵抗了冰冻效果！`, "text-cyan-600 font-bold");
+        }
         return;
     }
 
-    // 闪避判定
+    // 闪避判定（含装备闪避加成）
+    const finalDodgeRate = defender.dodgeRate + (defTraits.dodgeBonus || 0);
     const dodgeRoll = Math.random()*100;
-    if(dodgeRoll < defender.dodgeRate){
+    if(dodgeRoll < finalDodgeRate){
         createFloatText(targetLayer, "", "dodge");
-        addBattleLog(`${defName} 灵巧闪避了${atkName}的攻击！`,"text-teal-600");
+        addBattleLog(`${defName} 灵巧闪避了${atkName}的攻击！`, "text-teal-600");
         targetCanvas.classList.add("dodge-fade-anim");
         setTimeout(()=>targetCanvas.classList.remove("dodge-fade-anim"),600);
         return;
@@ -1123,16 +1144,18 @@ async function doAttack(attacker, defender, defSide, spdDiff = 0){
     let isCrit = false;
     const critRoll = Math.random()*100;
     if(critRoll < attacker.critRate){
-        critMul = 2.0;
+        critMul = 2.0 * (1 + (atkTraits.critBonus || 0)/100);
         isCrit = true;
-        addBattleLog(`【暴击！】${atkName}打出致命一击！`,"text-orange-500 font-semibold");
+        addBattleLog(`【暴击！】${atkName}打出致命一击！`, "text-orange-500 font-semibold");
         targetCanvas.classList.add("crit-glow");
         setTimeout(()=>targetCanvas.classList.remove("crit-glow"),500);
     }
     // 伤害公式：攻击*3.5 - 防御*1.5，保底25点伤害
-    // 设计：防御系数提升，让肉盾怪物真正耐打，速度差加成提高先手优势
-    let rawDmg = attacker.atk * 3.5 * critMul * (1 + spdBonus);
-    let finalDmg = Math.max(25, rawDmg - defender.def * 1.5);
+    // 装备特性：伤害加成、防御加成
+    const dmgBoost = 1 + (atkTraits.dmgBonus || 0)/100;
+    const defBoost = 1 + (defTraits.defBonus || 0)/100;
+    let rawDmg = attacker.atk * 3.5 * critMul * (1 + spdBonus) * dmgBoost;
+    let finalDmg = Math.max(25, rawDmg - defender.def * 1.5 * defBoost);
     finalDmg = Math.floor(finalDmg);
     
     // 防御格挡：血量低于30%时自动格挡，减免50%伤害
@@ -1146,6 +1169,14 @@ async function doAttack(attacker, defender, defSide, spdDiff = 0){
     }
     
     defender.currentHp = Math.max(0, defender.currentHp - finalDmg);
+    
+    // 反伤特性
+    if(defTraits.reflectDmg && finalDmg > 0){
+        const reflectDmg = Math.floor(finalDmg * (defTraits.reflectDmg / 100));
+        attacker.currentHp = Math.max(0, attacker.currentHp - reflectDmg);
+        addBattleLog(`💀 ${defName} 的反伤效果！${atkName} 受到 ${reflectDmg} 点伤害！`, "text-purple-600 font-bold");
+        updateBattleHpUI();
+    }
 
     // 爪痕+飘字特效
     createClawSlash(targetClawLayer);
@@ -1156,6 +1187,15 @@ async function doAttack(attacker, defender, defSide, spdDiff = 0){
 
     addBattleLog(`${atkName} 攻击${defName}，造成 ${finalDmg} 点伤害，剩余血量：${defender.currentHp}`);
     updateBattleHpUI();
+    
+    // 攻击回血特性
+    if(atkTraits.healOnHit && finalDmg > 0){
+        const healAmount = Math.floor(finalDmg * (atkTraits.healOnHit / 100));
+        attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + healAmount);
+        addBattleLog(`💚 ${atkName} 攻击回血 ${healAmount} 点！`, "text-green-600 font-bold");
+        updateBattleHpUI();
+    }
+    
     await delay(500);
 }
 
