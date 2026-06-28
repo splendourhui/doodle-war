@@ -72,10 +72,20 @@
             pointer-events: none;
             animation: float-damage 0.8s ease-out forwards;
             z-index: 10;
+            transform: translateX(-50%);
         }
         .dodge-text { color: #14b8a6; font-size: 18px; }
         .normal-dmg { color: #ef4444; }
         .crit-dmg { color: #f97316; font-size: 28px; }
+
+        /* 手机端响应式调整 */
+        @media (max-width: 767px) {
+            .float-dmg-text { font-size: 14px; top: 15%; }
+            .dodge-text { font-size: 12px; }
+            .crit-dmg { font-size: 18px; }
+            .train-dmg-text { font-size: 18px; }
+            .freeze-dmg-text { font-size: 16px; }
+        }
 
         canvas { touch-action: none; }
         .card-shadow { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
@@ -345,60 +355,77 @@
 
     <!-- 3. 对战竞技场 -->
     <section id="tab-battle" class="tab-content hidden">
-        <div class="bg-white rounded-xl p-4 card-shadow">
-            <h2 class="text-xl font-semibold mb-4">⚔️ 怪物自动对战</h2>
-            <div id="battleGrid" class="grid md:grid-cols-2 gap-6 mb-6 relative">
-                <!-- 左侧我方 -->
-                <div class="border-2 border-indigo-300 rounded-lg p-4">
-                    <h3 class="font-semibold text-indigo-700 mb-3">我方出战</h3>
-                    <div id="playerSelectBox" class="space-y-2 max-h-64 overflow-y-auto">
-                        <p class="text-slate-400 text-sm">先去图鉴保存怪物</p>
+        <div class="bg-white rounded-xl p-3 card-shadow">
+            <h2 class="text-lg font-semibold mb-3">⚔️ 怪物自动对战</h2>
+            
+            <!-- 手机端：选择框和战斗卡片分开布局 -->
+            <div class="mb-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="border border-indigo-200 rounded p-2">
+                        <h3 class="font-semibold text-indigo-600 text-sm mb-1">我方</h3>
+                        <div id="playerSelectBox" class="space-y-1 max-h-28 overflow-y-auto">
+                            <p class="text-slate-400 text-xs">先去图鉴保存</p>
+                        </div>
                     </div>
-                    <div id="playerMonsterCard" class="mt-4 hidden border border-indigo-200 rounded p-4 battle-card-wrap">
-                        <canvas id="playerBattleImg" width="160" height="160" class="mx-auto"></canvas>
-                        <div id="playerEffectLayer" class="absolute inset-0 pointer-events-none"></div>
-                        <div id="playerClawLayer" class="absolute inset-0 pointer-events-none"></div>
-                        <p id="playerBattleName" class="text-center font-bold mt-1"></p>
-                        <div class="mt-2">
-                            <div class="flex justify-between text-sm">
-                                <span>血量</span>
-                                <span><span id="playerHp">1000</span>/<span id="playerMaxHp">1000</span></span>
+                    <div class="border border-rose-200 rounded p-2">
+                        <h3 class="font-semibold text-rose-600 text-sm mb-1">敌方</h3>
+                        <div id="enemySelectBox" class="space-y-1 max-h-28 overflow-y-auto">
+                            <p class="text-slate-400 text-xs">先去图鉴保存</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 战斗区域：手机端横向排列双方卡片 -->
+            <div id="battleGrid" class="grid grid-cols-2 gap-2 mb-3 relative">
+                <!-- 我方战斗卡片 -->
+                <div class="bg-gradient-to-b from-indigo-50 to-white rounded-lg p-2 border border-indigo-300">
+                    <div id="playerMonsterCard" class="hidden battle-card-wrap relative">
+                        <div class="flex justify-center mb-1">
+                            <canvas id="playerBattleImg" width="120" height="120" class="rounded"></canvas>
+                            <div id="playerEffectLayer" class="absolute inset-0 pointer-events-none"></div>
+                            <div id="playerClawLayer" class="absolute inset-0 pointer-events-none"></div>
+                        </div>
+                        <p id="playerBattleName" class="text-center font-bold text-xs truncate"></p>
+                        <div class="mt-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-green-600">❤️</span>
+                                <span class="font-mono"><span id="playerHp">1000</span>/<span id="playerMaxHp">1000</span></span>
                             </div>
-                            <div class="w-full bg-slate-200 h-3 rounded-full mt-1 overflow-hidden">
-                                <div id="playerHpBar" class="h-full bg-green-500 transition-all"></div>
+                            <div class="w-full bg-slate-200 h-2.5 rounded-full mt-0.5 overflow-hidden">
+                                <div id="playerHpBar" class="h-full bg-gradient-to-r from-green-600 to-green-400 transition-all duration-300"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <!-- 右侧敌方 -->
-                <div class="border-2 border-rose-300 rounded-lg p-4">
-                    <h3 class="font-semibold text-rose-700 mb-3">敌方出战</h3>
-                    <div id="enemySelectBox" class="space-y-2 max-h-64 overflow-y-auto">
-                        <p class="text-slate-400 text-sm">先去图鉴保存怪物</p>
-                    </div>
-                    <div id="enemyMonsterCard" class="mt-4 hidden border border-rose-200 rounded p-4 battle-card-wrap">
-                        <canvas id="enemyBattleImg" width="160" height="160" class="mx-auto"></canvas>
-                        <div id="enemyEffectLayer" class="absolute inset-0 pointer-events-none"></div>
-                        <div id="enemyClawLayer" class="absolute inset-0 pointer-events-none"></div>
-                        <p id="enemyBattleName" class="text-center font-bold mt-1"></p>
-                        <div class="mt-2">
-                            <div class="flex justify-between text-sm">
-                                <span>血量</span>
-                                <span><span id="enemyHp">1000</span>/<span id="enemyMaxHp">1000</span></span>
+                <!-- 敌方战斗卡片 -->
+                <div class="bg-gradient-to-b from-rose-50 to-white rounded-lg p-2 border border-rose-300">
+                    <div id="enemyMonsterCard" class="hidden battle-card-wrap relative">
+                        <div class="flex justify-center mb-1">
+                            <canvas id="enemyBattleImg" width="120" height="120" class="rounded"></canvas>
+                            <div id="enemyEffectLayer" class="absolute inset-0 pointer-events-none"></div>
+                            <div id="enemyClawLayer" class="absolute inset-0 pointer-events-none"></div>
+                        </div>
+                        <p id="enemyBattleName" class="text-center font-bold text-xs truncate"></p>
+                        <div class="mt-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-red-600">❤️</span>
+                                <span class="font-mono"><span id="enemyHp">1000</span>/<span id="enemyMaxHp">1000</span></span>
                             </div>
-                            <div class="w-full bg-slate-200 h-3 rounded-full mt-1 overflow-hidden">
-                                <div id="enemyHpBar" class="h-full bg-red-500 transition-all"></div>
+                            <div class="w-full bg-slate-200 h-2.5 rounded-full mt-0.5 overflow-hidden">
+                                <div id="enemyHpBar" class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-300"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="text-center mb-4">
-                <button onclick="startBattle()" class="btn-danger text-white px-8 py-3 rounded-lg font-bold text-lg">开始对战</button>
+            
+            <div class="text-center mb-3">
+                <button onclick="startBattle()" class="btn-danger text-white px-6 py-2 rounded-lg font-bold text-base w-full max-w-xs">开始对战</button>
             </div>
-            <div class="border border-slate-300 rounded-lg p-3 h-64 overflow-y-auto">
-                <h4 class="font-semibold mb-2">对战记录</h4>
-                <div id="battleLog" class="text-sm space-y-1 text-slate-700">
+            <div class="border border-slate-300 rounded-lg p-2 h-40 overflow-y-auto">
+                <h4 class="font-semibold text-sm mb-1">对战记录</h4>
+                <div id="battleLog" class="text-xs space-y-0.5 text-slate-700">
                     <p class="text-slate-400">选择双方怪物后开启战斗</p>
                 </div>
             </div>
@@ -794,7 +821,7 @@ function selectPlayer(m){
     const c = document.getElementById("playerBattleImg");
     const ctx = c.getContext("2d");
     const img = new Image();
-    img.onload = ()=>{ctx.clearRect(0,0,160,160);ctx.drawImage(img,0,0,160,160);}
+    img.onload = ()=>{ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);}
     img.src = m.doodleImg;
 }
 function selectEnemy(m){
@@ -812,7 +839,7 @@ function selectEnemy(m){
     const c = document.getElementById("enemyBattleImg");
     const ctx = c.getContext("2d");
     const img = new Image();
-    img.onload = ()=>{ctx.clearRect(0,0,160,160);ctx.drawImage(img,0,0,160,160);}
+    img.onload = ()=>{ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);}
     img.src = m.doodleImg;
 }
 
@@ -959,12 +986,12 @@ async function summonTrain(attacker, defender, defSide){
     targetCanvas.classList.remove(fromLeft ? "knock-fly-right" : "knock-fly-left");
     targetCanvas.classList.add("fall-from-sky-anim");
 
-    // 应用200点固定伤害（无视防御与闪避）
-    const fixedDmg = 200;
+    // 应用伤害：atk*3 + 100（与攻击力挂钩，高攻怪物更有优势）
+    const fixedDmg = attacker.atk * 3 + 100;
     defender.currentHp = Math.max(0, defender.currentHp - fixedDmg);
 
     createFloatText(targetLayer, fixedDmg, "train");
-    addBattleLog(`🚂 列车撞飞了 ${defName}！造成 ${fixedDmg} 点固定伤害，剩余血量：${defender.currentHp}`, "text-red-600 font-bold");
+    addBattleLog(`🚂 列车撞飞了 ${defName}！造成 ${fixedDmg} 点伤害，剩余血量：${defender.currentHp}`, "text-red-600 font-bold");
     updateBattleHpUI();
 
     await delay(1000);
@@ -988,9 +1015,10 @@ async function summonACFreeze(attacker, defender, defSide){
     setTimeout(()=>targetCanvas.classList.remove("freeze-flash"), 500);
     await delay(500);
 
-    // 冰块覆盖怪物，设置冰冻状态（2回合无法行动）
+    // 冰块覆盖怪物，设置冰冻状态（1回合无法行动）
     showIceBlock(defSide);
-    defender.frozenTurns = 2;
+    defender.frozenTurns = 1;
+    defender.frostDamage = attacker.atk * 1.5;
     createFloatText(targetLayer, 0, "freeze");
 
     await delay(800);
@@ -1037,21 +1065,31 @@ async function thawMonster(side){
 }
 
 // 单次攻击逻辑（适配新数值伤害公式）
-async function doAttack(attacker,defender,defSide){
+async function doAttack(attacker, defender, defSide, spdDiff = 0){
     const atkName = attacker.name;
     const defName = defender.name;
     const atkSide = defSide === "player" ? "enemy" : "player";
     const targetLayer = defSide === "player" ? "playerEffectLayer" : "enemyEffectLayer";
     const targetClawLayer = defSide === "player" ? "playerClawLayer" : "enemyClawLayer";
     const targetCanvas = defSide === "player" ? document.getElementById("playerBattleImg") : document.getElementById("enemyBattleImg");
+    // 速度差伤害加成：每点速度差增加0.5%伤害（最多20%）
+    const spdBonus = Math.min(0.2, spdDiff * 0.005);
 
-    // 冰冻检查：被冰冻则跳过本回合，仅最后一回合解冻
+    // 冰冻检查：被冰冻则跳过本回合，解冻时受到冻伤伤害
     if(attacker.frozenTurns > 0){
         attacker.frozenTurns--;
         const remain = attacker.frozenTurns;
         addBattleLog(`❄️ ${atkName} 被冰冻，无法行动！${remain > 0 ? `(剩余${remain}回合)` : "(冰碎解冻)"}`, "text-cyan-600 font-bold");
         if(remain === 0){
             await thawMonster(atkSide);
+            // 解冻时受到冻伤伤害
+            if(attacker.frostDamage > 0){
+                const frostDmg = Math.floor(attacker.frostDamage);
+                attacker.currentHp = Math.max(0, attacker.currentHp - frostDmg);
+                addBattleLog(`💧 ${atkName} 解冻时受到 ${frostDmg} 点冻伤伤害！`, "text-cyan-500 font-bold");
+                updateBattleHpUI();
+                attacker.frostDamage = 0;
+            }
         } else {
             await delay(500);
         }
@@ -1085,16 +1123,28 @@ async function doAttack(attacker,defender,defSide){
     let isCrit = false;
     const critRoll = Math.random()*100;
     if(critRoll < attacker.critRate){
-        critMul = 1.8;
+        critMul = 2.0;
         isCrit = true;
         addBattleLog(`【暴击！】${atkName}打出致命一击！`,"text-orange-500 font-semibold");
         targetCanvas.classList.add("crit-glow");
         setTimeout(()=>targetCanvas.classList.remove("crit-glow"),500);
     }
-    // 伤害公式：攻击*3 - 防御*1.2，保底20点伤害（拉长战斗回合）
-    let rawDmg = attacker.atk * 3 * critMul;
-    let finalDmg = Math.max(20, rawDmg - defender.def * 1.2);
+    // 伤害公式：攻击*3.5 - 防御*1.5，保底25点伤害
+    // 设计：防御系数提升，让肉盾怪物真正耐打，速度差加成提高先手优势
+    let rawDmg = attacker.atk * 3.5 * critMul * (1 + spdBonus);
+    let finalDmg = Math.max(25, rawDmg - defender.def * 1.5);
     finalDmg = Math.floor(finalDmg);
+    
+    // 防御格挡：血量低于30%时自动格挡，减免50%伤害
+    const hpPercent = defender.currentHp / defender.maxHp;
+    if(hpPercent <= 0.3){
+        const blocked = Math.floor(finalDmg * 0.5);
+        finalDmg -= blocked;
+        addBattleLog(`🛡️ ${defName} 血量危急！自动格挡了 ${blocked} 点伤害！`, "text-blue-600 font-bold");
+        targetCanvas.classList.add("crit-glow");
+        setTimeout(()=>targetCanvas.classList.remove("crit-glow"),500);
+    }
+    
     defender.currentHp = Math.max(0, defender.currentHp - finalDmg);
 
     // 爪痕+飘字特效
@@ -1106,7 +1156,7 @@ async function doAttack(attacker,defender,defSide){
 
     addBattleLog(`${atkName} 攻击${defName}，造成 ${finalDmg} 点伤害，剩余血量：${defender.currentHp}`);
     updateBattleHpUI();
-    await delay(700);
+    await delay(500);
 }
 
 // 开始战斗
@@ -1129,14 +1179,15 @@ async function startBattle(){
     document.getElementById("playerBattleImg").classList.remove("win-gold-anim","freeze-flash");
     document.getElementById("enemyBattleImg").classList.remove("win-gold-anim","freeze-flash");
     updateBattleHpUI();
-    await delay(600);
+    await delay(400);
 
     let round = 1;
     // 回合循环
     while(selectedPlayerMonster.currentHp > 0 && selectedEnemyMonster.currentHp > 0){
         addBattleLog(`【第${round}回合】`,"font-bold text-slate-800");
-        // 速度高者先手
+        // 速度高者先手，计算速度差
         let first,second,secondSide;
+        const spdDiff = Math.abs(selectedPlayerMonster.spd - selectedEnemyMonster.spd);
         if(selectedPlayerMonster.spd >= selectedEnemyMonster.spd){
             first = selectedPlayerMonster; second = selectedEnemyMonster;
             secondSide = "enemy";
@@ -1144,19 +1195,26 @@ async function startBattle(){
             first = selectedEnemyMonster; second = selectedPlayerMonster;
             secondSide = "player";
         }
-        // 先手攻击
-        await doAttack(first,second, secondSide);
+        // 先手攻击（高速者获得速度差伤害加成）
+        await doAttack(first, second, secondSide, spdDiff);
         if(second.currentHp <= 0) break;
-        await delay(800);
+        await delay(600);
         // 后手反击
-        await doAttack(second,first, secondSide==="enemy" ? "player" : "enemy");
+        await doAttack(second, first, secondSide==="enemy" ? "player" : "enemy", 0);
         if(first.currentHp <= 0) break;
+        // 高速额外攻击：速度差超过25时，高速方获得额外攻击机会
+        if(spdDiff >= 25){
+            addBattleLog(`⚡ ${first.name} 速度优势太大！发动追击！`, "text-green-500 font-bold");
+            await delay(400);
+            await doAttack(first, second, secondSide, spdDiff);
+            if(second.currentHp <= 0) break;
+        }
         round++;
-        await delay(1000);
+        await delay(800);
     }
 
     // 战斗结算
-    await delay(500);
+    await delay(300);
     if(selectedPlayerMonster.currentHp <= 0 && selectedEnemyMonster.currentHp <=0){
         addBattleLog("双方同时倒下，平局！","text-orange-500 font-bold");
     }else if(selectedPlayerMonster.currentHp <=0){
